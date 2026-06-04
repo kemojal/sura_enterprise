@@ -3,8 +3,10 @@ import { getRequest } from '@tanstack/react-start/server'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+import { desc, sql } from 'drizzle-orm'
+
 import { db } from '#/db/index'
-import { products, suppliers } from '#/db/schema'
+import { products, purchaseOrders, shops, suppliers } from '#/db/schema'
 import { getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
@@ -29,7 +31,63 @@ export const getSupplier = createServerFn({ method: 'GET' })
       .select()
       .from(products)
       .where(and(eq(products.supplierId, supplier.id), eq(products.shopId, shopId)))
-    return { supplier, products: supplierProducts }
+
+    const [shop] = await db
+      .select({ currency: shops.currency })
+      .from(shops)
+      .where(eq(shops.id, shopId))
+      .limit(1)
+
+    // Purchase orders for this supplier
+    const pos = await db
+      .select({
+        id: purchaseOrders.id,
+        status: purchaseOrders.status,
+        totalAmount: purchaseOrders.totalAmount,
+        amountPaid: purchaseOrders.amountPaid,
+        createdAt: purchaseOrders.createdAt,
+        receivedAt: purchaseOrders.receivedAt,
+      })
+      .from(purchaseOrders)
+      .where(
+        and(
+          eq(purchaseOrders.supplierId, supplier.id),
+          eq(purchaseOrders.shopId, shopId),
+        ),
+      )
+      .orderBy(desc(purchaseOrders.createdAt))
+      .limit(100)
+
+    // Statement totals exclude cancelled orders
+    const [agg] = await db
+      .select({
+        totalOrdered: sql<string>`coalesce(sum(case when ${purchaseOrders.status} != 'cancelled' then ${purchaseOrders.totalAmount} else 0 end), 0)`,
+        totalPaid: sql<string>`coalesce(sum(case when ${purchaseOrders.status} != 'cancelled' then ${purchaseOrders.amountPaid} else 0 end), 0)`,
+        orderCount: sql<number>`cast(count(*) as int)`,
+      })
+      .from(purchaseOrders)
+      .where(
+        and(
+          eq(purchaseOrders.supplierId, supplier.id),
+          eq(purchaseOrders.shopId, shopId),
+        ),
+      )
+
+    const totalOrdered = Number(agg?.totalOrdered ?? 0)
+    const totalPaid = Number(agg?.totalPaid ?? 0)
+
+    return {
+      supplier,
+      products: supplierProducts,
+      pos,
+      currency: shop?.currency ?? 'GHS',
+      stats: {
+        totalOrdered,
+        totalPaid,
+        outstanding: totalOrdered - totalPaid,
+        orderCount: agg?.orderCount ?? 0,
+      },
+    }
   })
 
 const supplierSchema = z.object({
