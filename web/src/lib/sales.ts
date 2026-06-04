@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { db } from '#/db/index'
 import { customers, products, saleItems, sales, shops, staffMembers, user } from '#/db/schema'
+import { logActivity } from './activity'
 import { getShopCtx } from './context'
 import { sendLowStockAlert } from './email'
 import { nanoid } from './nanoid'
@@ -105,7 +106,8 @@ export const createSale = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId, userId } = await getShopCtx(request.headers)
+    const ctx = await getShopCtx(request.headers)
+    const { shopId, userId } = ctx
 
     const totalAmount = data.items
       .reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0)
@@ -166,6 +168,16 @@ export const createSale = createServerFn({ method: 'POST' })
           .set({ stockQty: sql`${products.stockQty} - ${item.quantity}` })
           .where(eq(products.id, item.productId))
       }
+
+      await logActivity(tx, {
+        shopId,
+        staffId: ctx.staffId,
+        actorName: ctx.userName,
+        action: 'sale.created',
+        entityType: 'sale',
+        entityId: saleId,
+        description: `Recorded ${status} sale of ${totalAmount} (${data.items.length} item${data.items.length === 1 ? '' : 's'})`,
+      })
 
       return newSale
     })

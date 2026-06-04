@@ -330,3 +330,19 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
   unitCost: decimal('unit_cost', { precision: 12, scale: 2 }).notNull(),
   subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
 })
+
+export const activityLog = pgTable('activity_log', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  staffId: text('staff_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  actorName: text('actor_name'), // denormalized so log survives staff deletion
+  action: text('action').notNull(), // e.g. sale.created, stock.adjusted
+  entityType: text('entity_type').notNull(), // sale, product, purchase_order…
+  entityId: text('entity_id'),
+  description: text('description').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})

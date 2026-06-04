@@ -6,6 +6,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import {
+  Activity,
   BarChart3,
   ClipboardList,
   LayoutDashboard,
@@ -82,6 +83,12 @@ const navItems = [
     label: 'Reports',
     icon: BarChart3,
     resource: 'reports',
+  },
+  {
+    to: '/app/activity',
+    label: 'Activity',
+    icon: Activity,
+    resource: 'activity',
   },
   { to: '/app/staff', label: 'Staff', icon: Users, resource: 'staff' },
   { to: '/app/settings', label: 'Settings', icon: Settings, resource: 'settings' },

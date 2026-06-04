@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db } from '#/db/index'
 import { staffMembers } from '#/db/schema'
 import { auth } from './auth'
+import { logActivity } from './activity'
 import { getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
@@ -37,7 +38,8 @@ export const addStaff = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId } = await getShopCtxWithPermission(request.headers, 'staff')
+    const ctx = await getShopCtxWithPermission(request.headers, 'staff')
+    const { shopId } = ctx
 
     const newUser = await auth.api.signUpEmail({
       body: { name: data.name, email: data.email, password: data.password },
@@ -57,6 +59,16 @@ export const addStaff = createServerFn({ method: 'POST' })
       })
       .returning()
 
+    await logActivity(db, {
+      shopId,
+      staffId: ctx.staffId,
+      actorName: ctx.userName,
+      action: 'staff.added',
+      entityType: 'staff',
+      entityId: staff.id,
+      description: `Added ${data.role} ${data.name}`,
+    })
+
     return staff
   })
 
@@ -64,9 +76,21 @@ export const updateStaffStatus = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ id: z.string(), isActive: z.boolean() }))
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId } = await getShopCtxWithPermission(request.headers, 'staff')
-    await db
+    const ctx = await getShopCtxWithPermission(request.headers, 'staff')
+    const { shopId } = ctx
+    const [updated] = await db
       .update(staffMembers)
       .set({ isActive: data.isActive })
       .where(and(eq(staffMembers.id, data.id), eq(staffMembers.shopId, shopId)))
+      .returning({ name: staffMembers.name })
+
+    await logActivity(db, {
+      shopId,
+      staffId: ctx.staffId,
+      actorName: ctx.userName,
+      action: data.isActive ? 'staff.reactivated' : 'staff.suspended',
+      entityType: 'staff',
+      entityId: data.id,
+      description: `${data.isActive ? 'Reactivated' : 'Suspended'} ${updated?.name ?? 'staff member'}`,
+    })
   })

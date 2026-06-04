@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { db } from '#/db/index'
 import { products, staffMembers, stockAdjustments } from '#/db/schema'
+import { logActivity } from './activity'
 import { getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
@@ -64,17 +65,15 @@ export const createStockAdjustment = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId, staffId } = await getShopCtxWithPermission(
-      request.headers,
-      'products:write',
-    )
+    const ctx = await getShopCtxWithPermission(request.headers, 'products:write')
+    const { shopId, staffId } = ctx
 
     // write_off reduces stock (negative), others increase
     const delta = data.type === 'write_off' ? -data.quantity : data.quantity
 
     return db.transaction(async (tx) => {
       const [product] = await tx
-        .select({ stockQty: products.stockQty })
+        .select({ stockQty: products.stockQty, name: products.name })
         .from(products)
         .where(and(eq(products.id, data.productId), eq(products.shopId, shopId)))
         .limit(1)
@@ -101,6 +100,16 @@ export const createStockAdjustment = createServerFn({ method: 'POST' })
           note: data.note,
         })
         .returning()
+
+      await logActivity(tx, {
+        shopId,
+        staffId: ctx.staffId,
+        actorName: ctx.userName,
+        action: 'stock.adjusted',
+        entityType: 'product',
+        entityId: data.productId,
+        description: `Stock ${data.type.replace('_', ' ')} on ${product.name}: ${delta > 0 ? '+' : ''}${delta} (now ${newQty})`,
+      })
 
       return { adjustment, newQty }
     })

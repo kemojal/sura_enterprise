@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { db } from '#/db/index'
 import { customerPayments, customers, sales } from '#/db/schema'
+import { logActivity } from './activity'
 import { getShopCtx, getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
@@ -96,7 +97,7 @@ export const recordPayment = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const request = getRequest()
-    await getShopCtxWithPermission(request.headers, 'customers:write')
+    const ctx = await getShopCtxWithPermission(request.headers, 'customers:write')
 
     await db.transaction(async (tx) => {
       await tx.insert(customerPayments).values({
@@ -123,5 +124,21 @@ export const recordPayment = createServerFn({ method: 'POST' })
             .where(eq(sales.id, data.saleId))
         }
       }
+
+      const [cust] = await tx
+        .select({ name: customers.name })
+        .from(customers)
+        .where(eq(customers.id, data.customerId))
+        .limit(1)
+
+      await logActivity(tx, {
+        shopId: ctx.shopId,
+        staffId: ctx.staffId,
+        actorName: ctx.userName,
+        action: 'customer.payment',
+        entityType: 'customer',
+        entityId: data.customerId,
+        description: `Recorded ${data.amount} payment from ${cust?.name ?? 'customer'}`,
+      })
     })
   })

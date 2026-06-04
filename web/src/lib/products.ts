@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { db } from '#/db/index'
 import { categories, products } from '#/db/schema'
+import { logActivity } from './activity'
 import { getShopCtx, getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
@@ -131,9 +132,21 @@ export const deleteProduct = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId } = await getShopCtxWithPermission(request.headers, 'products:write')
-    await db
+    const ctx = await getShopCtxWithPermission(request.headers, 'products:write')
+    const { shopId } = ctx
+    const [removed] = await db
       .update(products)
       .set({ isActive: false })
       .where(and(eq(products.id, data.id), eq(products.shopId, shopId)))
+      .returning({ name: products.name })
+
+    await logActivity(db, {
+      shopId,
+      staffId: ctx.staffId,
+      actorName: ctx.userName,
+      action: 'product.deleted',
+      entityType: 'product',
+      entityId: data.id,
+      description: `Deleted product ${removed?.name ?? ''}`.trim(),
+    })
   })

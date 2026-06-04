@@ -10,6 +10,7 @@ import {
   purchaseOrders,
   suppliers,
 } from '#/db/schema'
+import { logActivity } from './activity'
 import { getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
@@ -93,10 +94,8 @@ export const createPurchaseOrder = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId, staffId } = await getShopCtxWithPermission(
-      request.headers,
-      'purchase_orders',
-    )
+    const ctx = await getShopCtxWithPermission(request.headers, 'purchase_orders')
+    const { shopId, staffId } = ctx
 
     const totalAmount = data.items
       .reduce((sum, i) => sum + Number(i.unitCost) * i.quantity, 0)
@@ -124,6 +123,16 @@ export const createPurchaseOrder = createServerFn({ method: 'POST' })
       })
     }
 
+    await logActivity(db, {
+      shopId,
+      staffId: ctx.staffId,
+      actorName: ctx.userName,
+      action: 'po.created',
+      entityType: 'purchase_order',
+      entityId: poId,
+      description: `Created purchase order — ${totalAmount} (${data.items.length} item${data.items.length === 1 ? '' : 's'})`,
+    })
+
     return { id: poId }
   })
 
@@ -132,7 +141,8 @@ export const receivePurchaseOrder = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId } = await getShopCtxWithPermission(request.headers, 'purchase_orders')
+    const ctx = await getShopCtxWithPermission(request.headers, 'purchase_orders')
+    const { shopId } = ctx
 
     return db.transaction(async (tx) => {
       const [po] = await tx
@@ -162,6 +172,16 @@ export const receivePurchaseOrder = createServerFn({ method: 'POST' })
         .update(purchaseOrders)
         .set({ status: 'received', receivedAt: new Date() })
         .where(eq(purchaseOrders.id, po.id))
+
+      await logActivity(tx, {
+        shopId,
+        staffId: ctx.staffId,
+        actorName: ctx.userName,
+        action: 'po.received',
+        entityType: 'purchase_order',
+        entityId: po.id,
+        description: `Received purchase order — restocked ${items.length} product${items.length === 1 ? '' : 's'}`,
+      })
 
       return { received: items.length }
     })

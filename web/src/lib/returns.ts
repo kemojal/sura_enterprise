@@ -11,6 +11,7 @@ import {
   saleReturns,
   sales,
 } from '#/db/schema'
+import { logActivity } from './activity'
 import { getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
@@ -71,10 +72,8 @@ export const createReturn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId, staffId } = await getShopCtxWithPermission(
-      request.headers,
-      'products:write',
-    )
+    const ctx = await getShopCtxWithPermission(request.headers, 'products:write')
+    const { shopId, staffId } = ctx
 
     return db.transaction(async (tx) => {
       const [sale] = await tx
@@ -181,6 +180,16 @@ export const createReturn = createServerFn({ method: 'POST' })
       }
 
       await tx.update(sales).set(updates).where(eq(sales.id, sale.id))
+
+      await logActivity(tx, {
+        shopId,
+        staffId: ctx.staffId,
+        actorName: ctx.userName,
+        action: 'sale.returned',
+        entityType: 'sale',
+        entityId: sale.id,
+        description: `${fullyReturned ? 'Fully refunded' : 'Partially refunded'} sale — ${refundAmount.toFixed(2)} returned`,
+      })
 
       return { returnId, refundAmount: refundAmount.toFixed(2), fullyReturned }
     })

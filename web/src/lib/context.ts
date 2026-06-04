@@ -11,9 +11,13 @@ export interface ShopContext {
   role: StaffRole
   staffId: string | undefined
   userId: string
+  userName?: string
 }
 
-export async function getShopCtxForUser(userId: string): Promise<ShopContext> {
+export async function getShopCtxForUser(
+  userId: string,
+  userName?: string,
+): Promise<ShopContext> {
   const [ownedShop] = await db
     .select({ id: shops.id })
     .from(shops)
@@ -36,6 +40,7 @@ export async function getShopCtxForUser(userId: string): Promise<ShopContext> {
       role: 'owner',
       staffId: ownerStaff?.id,
       userId,
+      userName,
     }
   }
 
@@ -58,13 +63,14 @@ export async function getShopCtxForUser(userId: string): Promise<ShopContext> {
     role: staff.role as StaffRole,
     staffId: staff.id,
     userId,
+    userName,
   }
 }
 
 export async function getShopCtx(headers: Headers): Promise<ShopContext> {
   const session = await auth.api.getSession({ headers })
   if (!session) throw new Error('Not authenticated')
-  return getShopCtxForUser(session.user.id)
+  return getShopCtxForUser(session.user.id, session.user.name)
 }
 
 export async function getShopCtxWithPermission(
