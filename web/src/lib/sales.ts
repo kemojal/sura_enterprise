@@ -52,6 +52,7 @@ export const getSaleDetail = createServerFn({ method: 'GET' })
       .select({
         id: sales.id,
         totalAmount: sales.totalAmount,
+        taxAmount: sales.taxAmount,
         amountPaid: sales.amountPaid,
         paymentMethod: sales.paymentMethod,
         status: sales.status,
@@ -88,6 +89,8 @@ export const getSaleDetail = createServerFn({ method: 'GET' })
         currency: shops.currency,
         logoUrl: shops.logoUrl,
         receiptFooter: shops.receiptFooter,
+        taxRate: shops.taxRate,
+        taxInclusive: shops.taxInclusive,
       })
       .from(shops)
       .where(eq(shops.id, shopId))
@@ -95,6 +98,26 @@ export const getSaleDetail = createServerFn({ method: 'GET' })
 
     return { sale, items, shop }
   })
+
+// Tax config for the POS sale form
+export const getSaleConfig = createServerFn({ method: 'GET' }).handler(async () => {
+  const request = getRequest()
+  const { shopId } = await getShopCtx(request.headers)
+  const [shop] = await db
+    .select({
+      currency: shops.currency,
+      taxRate: shops.taxRate,
+      taxInclusive: shops.taxInclusive,
+    })
+    .from(shops)
+    .where(eq(shops.id, shopId))
+    .limit(1)
+  return {
+    currency: shop?.currency ?? 'GHS',
+    taxRate: Number(shop?.taxRate ?? 0),
+    taxInclusive: shop?.taxInclusive ?? true,
+  }
+})
 
 const saleItemSchema = z.object({
   productId: z.string(),
@@ -116,9 +139,34 @@ export const createSale = createServerFn({ method: 'POST' })
     const ctx = await getShopCtx(request.headers)
     const { shopId, userId } = ctx
 
-    const totalAmount = data.items
-      .reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0)
-      .toFixed(2)
+    // Tax config from the shop
+    const [shopTax] = await db
+      .select({ taxRate: shops.taxRate, taxInclusive: shops.taxInclusive })
+      .from(shops)
+      .where(eq(shops.id, shopId))
+      .limit(1)
+    const rate = Number(shopTax?.taxRate ?? 0)
+
+    const lineTotal = data.items.reduce(
+      (sum, item) => sum + Number(item.unitPrice) * item.quantity,
+      0,
+    )
+
+    // Inclusive: line prices already contain tax; tax is the embedded portion.
+    // Exclusive: tax is added on top of the line total.
+    let totalAmountNum = lineTotal
+    let taxAmountNum = 0
+    if (rate > 0) {
+      if (shopTax?.taxInclusive) {
+        taxAmountNum = lineTotal * (rate / (100 + rate))
+        totalAmountNum = lineTotal
+      } else {
+        taxAmountNum = lineTotal * (rate / 100)
+        totalAmountNum = lineTotal + taxAmountNum
+      }
+    }
+    const totalAmount = totalAmountNum.toFixed(2)
+    const taxAmount = taxAmountNum.toFixed(2)
 
     const amountPaid = Number(data.amountPaid).toFixed(2)
     const status = Number(amountPaid) < Number(totalAmount) ? 'credit' : 'completed'
@@ -154,6 +202,7 @@ export const createSale = createServerFn({ method: 'POST' })
             .then((r) => r[0]))?.id,
           customerId: data.customerId,
           totalAmount,
+          taxAmount,
           amountPaid,
           paymentMethod: data.paymentMethod,
           status,

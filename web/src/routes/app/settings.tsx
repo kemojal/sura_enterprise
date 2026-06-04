@@ -40,6 +40,8 @@ function SettingsPage() {
   const [currency, setCurrency] = useState(shop.currency)
   const [logoUrl, setLogoUrl] = useState(shop.logoUrl ?? '')
   const [receiptFooter, setReceiptFooter] = useState(shop.receiptFooter ?? '')
+  const [taxRate, setTaxRate] = useState(shop.taxRate ?? '0')
+  const [taxInclusive, setTaxInclusive] = useState(shop.taxInclusive ?? true)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -52,7 +54,9 @@ function SettingsPage() {
     phone !== (shop.phone ?? '') ||
     currency !== shop.currency ||
     logoUrl !== (shop.logoUrl ?? '') ||
-    receiptFooter !== (shop.receiptFooter ?? '')
+    receiptFooter !== (shop.receiptFooter ?? '') ||
+    taxRate !== (shop.taxRate ?? '0') ||
+    taxInclusive !== (shop.taxInclusive ?? true)
 
   async function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -96,6 +100,8 @@ function SettingsPage() {
           currency,
           logoUrl: logoUrl || undefined,
           receiptFooter: receiptFooter || undefined,
+          taxRate: taxRate || '0',
+          taxInclusive,
         },
       })
       setSaved(true)
@@ -177,6 +183,56 @@ function SettingsPage() {
               Changing currency affects all new receipts and reports. Existing
               records keep their original values.
             </p>
+          </div>
+        </div>
+
+        {/* Tax */}
+        <div className="bg-white rounded-xl border p-6 space-y-5">
+          <h3 className="text-sm font-medium text-gray-700 uppercase tracking-wide">
+            Tax / VAT
+          </h3>
+
+          <div className="space-y-1">
+            <Label htmlFor="s-taxrate">Tax rate (%)</Label>
+            <Input
+              id="s-taxrate"
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={taxRate}
+              onChange={(e) => { setTaxRate(e.target.value); setSaved(false) }}
+              className="max-w-32"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Set to 0 to disable tax. Applied to every new sale.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Pricing mode</Label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setTaxInclusive(true); setSaved(false) }}
+                className={`flex-1 px-3 py-2 rounded-lg border text-sm text-left ${taxInclusive ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}
+              >
+                <span className="font-medium block">Tax inclusive</span>
+                <span className="text-xs text-gray-500">
+                  Prices already include tax
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setTaxInclusive(false); setSaved(false) }}
+                className={`flex-1 px-3 py-2 rounded-lg border text-sm text-left ${!taxInclusive ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}
+              >
+                <span className="font-medium block">Tax exclusive</span>
+                <span className="text-xs text-gray-500">
+                  Tax added at checkout
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 

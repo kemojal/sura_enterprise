@@ -62,6 +62,8 @@ export const updateShop = createServerFn({ method: 'POST' })
       currency: z.string().min(1),
       logoUrl: z.string().optional(),
       receiptFooter: z.string().optional(),
+      taxRate: z.string().optional(),
+      taxInclusive: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -76,6 +78,8 @@ export const updateShop = createServerFn({ method: 'POST' })
         currency: data.currency,
         logoUrl: data.logoUrl ?? null,
         receiptFooter: data.receiptFooter ?? null,
+        taxRate: data.taxRate ?? '0',
+        taxInclusive: data.taxInclusive ?? true,
       })
       .where(eq(shops.id, shopId))
       .returning()

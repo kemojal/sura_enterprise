@@ -21,6 +21,8 @@ interface SaleFormProps {
     id: string
     name: string
   }[]
+  taxRate?: number
+  taxInclusive?: boolean
   onCancel: () => void
   onSaved: (saleId: string) => Promise<void> | void
 }
@@ -35,6 +37,8 @@ interface CartItem {
 export function SaleForm({
   products,
   customers,
+  taxRate = 0,
+  taxInclusive = true,
   onCancel,
   onSaved,
 }: SaleFormProps) {
@@ -92,10 +96,18 @@ export function SaleForm({
     }
   }
 
-  const total = cart.reduce(
+  const lineTotal = cart.reduce(
     (sum, i) => sum + Number(i.unitPrice) * i.quantity,
     0,
   )
+  // Inclusive: tax embedded in lineTotal; Exclusive: added on top.
+  const taxAmount =
+    taxRate > 0
+      ? taxInclusive
+        ? lineTotal * (taxRate / (100 + taxRate))
+        : lineTotal * (taxRate / 100)
+      : 0
+  const total = taxInclusive ? lineTotal : lineTotal + taxAmount
 
   function addToCart(product: SaleFormProps['products'][number]) {
     setCart((prev) => {
@@ -267,9 +279,25 @@ export function SaleForm({
               ))}
             </div>
           )}
-          <div className="flex justify-between border-t pt-2 font-medium">
-            <span>Total</span>
-            <span>{total.toFixed(2)}</span>
+          <div className="border-t pt-2 space-y-1">
+            {taxRate > 0 && (
+              <>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>{taxInclusive ? 'Subtotal (excl. tax)' : 'Subtotal'}</span>
+                  <span>{(total - taxAmount).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>
+                    Tax ({taxRate}%{taxInclusive ? ', incl.' : ''})
+                  </span>
+                  <span>{taxAmount.toFixed(2)}</span>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between font-medium">
+              <span>Total</span>
+              <span>{total.toFixed(2)}</span>
+            </div>
           </div>
         </div>
 

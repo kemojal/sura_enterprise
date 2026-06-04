@@ -112,6 +112,8 @@ export const shops = pgTable('shops', {
   currency: text('currency').notNull().default('GHS'),
   logoUrl: text('logo_url'),
   receiptFooter: text('receipt_footer'),
+  taxRate: decimal('tax_rate', { precision: 5, scale: 2 }).notNull().default('0'),
+  taxInclusive: boolean('tax_inclusive').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -197,6 +199,9 @@ export const sales = pgTable('sales', {
     onDelete: 'set null',
   }),
   totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+  taxAmount: decimal('tax_amount', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
   amountPaid: decimal('amount_paid', { precision: 12, scale: 2 }).notNull(),
   paymentMethod: paymentMethodEnum('payment_method').notNull().default('cash'),
   status: saleStatusEnum('status').notNull().default('completed'),

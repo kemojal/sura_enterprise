@@ -5,7 +5,7 @@ import { SaleForm } from '#/components/forms/sale-form'
 import { RouteDialog } from '#/components/route-dialog'
 import { listCustomers } from '#/lib/customers'
 import { listProducts } from '#/lib/products'
-import { listSales } from '#/lib/sales'
+import { getSaleConfig, listSales } from '#/lib/sales'
 import { SalesContent } from './index'
 
 export const Route = createFileRoute('/app/sales/new')({
@@ -15,18 +15,19 @@ export const Route = createFileRoute('/app/sales/new')({
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
-    const [sales, products, customers] = await Promise.all([
+    const [sales, products, customers, config] = await Promise.all([
       listSales({ data: deps }),
       listProducts({ data: {} }),
       listCustomers({ data: {} }),
+      getSaleConfig(),
     ])
-    return { sales, products, customers }
+    return { sales, products, customers, config }
   },
   component: NewSalePage,
 })
 
 function NewSalePage() {
-  const { sales, products, customers } = Route.useLoaderData()
+  const { sales, products, customers, config } = Route.useLoaderData()
   const { from, to } = Route.useSearch()
   const navigate = Route.useNavigate()
   const router = useRouter()
@@ -46,6 +47,8 @@ function NewSalePage() {
         <SaleForm
           products={products}
           customers={customers}
+          taxRate={config.taxRate}
+          taxInclusive={config.taxInclusive}
           onCancel={close}
           onSaved={(saleId) =>
             router.navigate({

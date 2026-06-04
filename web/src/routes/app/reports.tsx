@@ -80,9 +80,10 @@ function ReportsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {[
           { label: 'Revenue', value: fmt(data.revenue), pos: true },
+          { label: 'Tax Collected', value: fmt(data.taxCollected), pos: undefined },
           { label: 'Refunds', value: fmt(data.refunds), pos: false },
           { label: 'Expenses', value: fmt(data.totalExpenses), pos: false },
           {
