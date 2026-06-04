@@ -1,3 +1,6 @@
+// fallow-ignore-file security-sink
+// fetch() target is a presigned R2 URL generated server-side from env vars + a
+// server-controlled object key — not attacker-controlled. SSRF candidate is a false positive.
 import { useRef, useState } from 'react'
 import { ImagePlus, X } from 'lucide-react'
 

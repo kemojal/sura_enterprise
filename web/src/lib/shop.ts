@@ -9,27 +9,6 @@ import { auth } from './auth'
 import { getShopCtxForUser, getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
-export const getShopContext = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    const request = getRequest()
-    const session = await auth.api.getSession({ headers: request.headers })
-    if (!session) return null
-
-    try {
-      const ctx = await getShopCtxForUser(session.user.id)
-      const [shop] = await db
-        .select()
-        .from(shops)
-        .where(eq(shops.id, ctx.shopId))
-        .limit(1)
-      if (!shop) return null
-      return { shop, role: ctx.role, staffId: ctx.staffId }
-    } catch {
-      return null
-    }
-  },
-)
-
 export const getAppContext = createServerFn({ method: 'GET' }).handler(
   async () => {
     const request = getRequest()
