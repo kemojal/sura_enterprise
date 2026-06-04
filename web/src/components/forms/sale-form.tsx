@@ -1,10 +1,15 @@
 import { useState } from 'react'
-import { ScanLine } from 'lucide-react'
+import { PauseCircle, Play, ScanLine, Trash2 } from 'lucide-react'
 
 import { BarcodeScanner } from '#/components/barcode-scanner'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
+import {
+  deleteHeldSale,
+  getHeldSale,
+  holdSale,
+} from '#/lib/held-sales'
 import { findProductByBarcode } from '#/lib/products'
 import { createSale } from '#/lib/sales'
 
@@ -24,6 +29,14 @@ interface SaleFormProps {
   taxRate?: number
   taxInclusive?: boolean
   currency?: string
+  heldSales?: {
+    id: string
+    label: string | null
+    itemCount: number
+    total: string
+    customerName: string | null
+  }[]
+  onHeldChanged?: () => void
   onCancel: () => void
   onSaved: (saleId: string) => Promise<void> | void
 }
@@ -41,6 +54,8 @@ export function SaleForm({
   taxRate = 0,
   taxInclusive = true,
   currency = 'GHS',
+  heldSales = [],
+  onHeldChanged,
   onCancel,
   onSaved,
 }: SaleFormProps) {
@@ -189,6 +204,78 @@ export function SaleForm({
     }
   }
 
+  function clearCart() {
+    setCart([])
+    setCustomerId('')
+    setDiscountValue('')
+    setAmountPaid('')
+  }
+
+  async function handleHold() {
+    if (cart.length === 0) {
+      setError('Add products before holding')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const customerName = customers.find((c) => c.id === customerId)?.name
+      await holdSale({
+        data: {
+          items: cart.map((i) => ({
+            productId: i.productId,
+            name: i.name,
+            unitPrice: i.unitPrice,
+            quantity: i.quantity,
+          })),
+          customerId: customerId || undefined,
+          label: customerName,
+          discountType,
+          discountValue: discountValue || undefined,
+          total: total.toFixed(2),
+        },
+      })
+      clearCart()
+      onHeldChanged?.()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to hold sale')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleResume(id: string) {
+    setLoading(true)
+    setError('')
+    try {
+      const held = await getHeldSale({ data: { id } })
+      setCart(
+        held.items.map((i) => ({
+          productId: i.productId,
+          name: i.name,
+          unitPrice: i.unitPrice,
+          quantity: i.quantity,
+        })),
+      )
+      setCustomerId(held.customerId ?? '')
+      if (held.discountType === 'amount' || held.discountType === 'percent') {
+        setDiscountType(held.discountType)
+      }
+      setDiscountValue(held.discountValue ?? '')
+      await deleteHeldSale({ data: { id } })
+      onHeldChanged?.()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to resume sale')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDiscardHeld(id: string) {
+    await deleteHeldSale({ data: { id } })
+    onHeldChanged?.()
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {showScanner && (
@@ -196,6 +283,47 @@ export function SaleForm({
           onDetected={handleBarcodeDetected}
           onClose={() => setShowScanner(false)}
         />
+      )}
+
+      {heldSales.length > 0 && (
+        <div className="md:col-span-2 rounded-md border border-amber-200 bg-amber-50 p-3 space-y-2">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-amber-800">
+            <PauseCircle size={15} />
+            Held sales ({heldSales.length})
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {heldSales.map((h) => (
+              <div
+                key={h.id}
+                className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-1.5 text-sm"
+              >
+                <div>
+                  <span className="font-medium text-gray-900">
+                    {h.label || `${h.itemCount} item${h.itemCount === 1 ? '' : 's'}`}
+                  </span>
+                  <span className="text-gray-400 ml-1.5 text-xs">{h.total}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleResume(h.id)}
+                  disabled={loading}
+                  className="text-green-600 hover:text-green-800"
+                  title="Resume"
+                >
+                  <Play size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDiscardHeld(h.id)}
+                  className="text-gray-300 hover:text-red-500"
+                  title="Discard"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="space-y-3 rounded-md border bg-white p-3">

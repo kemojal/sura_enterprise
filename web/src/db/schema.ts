@@ -224,6 +224,28 @@ export const saleItems = pgTable('sale_items', {
   subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
 })
 
+// Parked carts — paused mid-checkout, resumed later. Not yet a sale, so no
+// stock movement. The cart is a JSON snapshot of line items + discount.
+export const heldSales = pgTable('held_sales', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  staffId: text('staff_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  customerId: text('customer_id').references(() => customers.id, {
+    onDelete: 'set null',
+  }),
+  label: text('label'),
+  itemsJson: text('items_json').notNull(),
+  discountType: text('discount_type'),
+  discountValue: text('discount_value'),
+  itemCount: integer('item_count').notNull().default(0),
+  total: decimal('total', { precision: 12, scale: 2 }).notNull().default('0'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export const saleReturns = pgTable('sale_returns', {
   id: text('id').primaryKey(),
   shopId: text('shop_id')
