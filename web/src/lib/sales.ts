@@ -4,7 +4,7 @@ import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { customers, products, saleItems, sales, shops, staffMembers, user } from '#/db/schema'
+import { customers, productVariants, products, saleItems, sales, shops, staffMembers, user } from '#/db/schema'
 import { logActivity } from './activity'
 import { getShopCtx } from './context'
 import { sendLowStockAlert } from './email'
@@ -77,6 +77,7 @@ export const getSaleDetail = createServerFn({ method: 'GET' })
         unitPrice: saleItems.unitPrice,
         subtotal: saleItems.subtotal,
         productName: products.name,
+        variantName: saleItems.variantName,
       })
       .from(saleItems)
       .leftJoin(products, eq(saleItems.productId, products.id))
@@ -128,6 +129,8 @@ export const getSaleConfig = createServerFn({ method: 'GET' }).handler(async () 
 
 const saleItemSchema = z.object({
   productId: z.string(),
+  variantId: z.string().optional(),
+  variantName: z.string().optional(),
   quantity: z.number().int().min(1),
   unitPrice: z.string(),
 })
@@ -276,14 +279,24 @@ export const createSale = createServerFn({ method: 'POST' })
           id: nanoid(),
           saleId,
           productId: item.productId,
+          variantId: item.variantId,
+          variantName: item.variantName,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           subtotal,
         })
-        await tx
-          .update(products)
-          .set({ stockQty: sql`${products.stockQty} - ${item.quantity}` })
-          .where(eq(products.id, item.productId))
+        // Decrement variant stock when a variant is sold, else product stock
+        if (item.variantId) {
+          await tx
+            .update(productVariants)
+            .set({ stockQty: sql`${productVariants.stockQty} - ${item.quantity}` })
+            .where(eq(productVariants.id, item.variantId))
+        } else {
+          await tx
+            .update(products)
+            .set({ stockQty: sql`${products.stockQty} - ${item.quantity}` })
+            .where(eq(products.id, item.productId))
+        }
       }
 
       // Update customer loyalty balance: subtract redeemed, add earned

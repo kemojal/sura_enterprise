@@ -80,7 +80,7 @@ export function ProductsContent({
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Products</h2>
+        <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Products</h2>
         <div className="flex items-center gap-2">
           <ExportButton
             rows={products}
@@ -127,7 +127,7 @@ export function ProductsContent({
           <select
             value={categoryId ?? ''}
             onChange={(e) => onCategoryChange(e.target.value)}
-            className="border rounded-md px-3 py-2 text-sm"
+            className="border border-line rounded-md px-3 py-2 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -140,19 +140,19 @@ export function ProductsContent({
       </div>
 
       {products.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-sea-ink-soft">
           No products yet.{' '}
           <Link
             to="/app/products/new"
-            className="text-blue-600 hover:underline"
+            className="text-lagoon-deep hover:underline"
           >
             Add your first product.
           </Link>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-md border bg-white">
+        <div className="app-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-left">
+            <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left">
               <tr>
                 <th className="px-4 py-3 font-medium w-10"></th>
                 <th className="px-4 py-3 font-medium">Name</th>
@@ -164,36 +164,36 @@ export function ProductsContent({
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-line">
               {products.map((p) => {
                 const isLow =
                   p.stockQty > 0 && p.stockQty <= p.lowStockThreshold
                 const isOut = p.stockQty === 0
                 return (
-                  <tr key={p.id} className="hover:bg-gray-50">
+                  <tr key={p.id} className="hover:bg-sea-ink/[0.04]">
                     <td className="px-3 py-2">
                       {p.imageUrl ? (
                         <img
                           src={p.imageUrl}
                           alt={p.name}
-                          className="w-9 h-9 rounded object-cover border"
+                          className="w-9 h-9 rounded object-cover border border-line"
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded bg-gray-100 border flex items-center justify-center text-gray-300 text-xs">
+                        <div className="w-9 h-9 rounded bg-sea-ink/[0.05] border border-line flex items-center justify-center text-sea-ink-soft text-xs">
                           —
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-900 font-medium">
+                    <td className="px-4 py-3 text-sea-ink font-medium">
                       {p.name}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">
+                    <td className="px-4 py-3 text-sea-ink-soft">
                       {p.categoryName ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-600">
+                    <td className="px-4 py-3 text-right text-sea-ink-soft">
                       {p.buyingPrice}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-600">
+                    <td className="px-4 py-3 text-right text-sea-ink-soft">
                       {p.sellingPrice}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -209,13 +209,13 @@ export function ProductsContent({
                               margin < 0
                                 ? 'text-red-600'
                                 : margin === 0
-                                  ? 'text-gray-400'
-                                  : 'text-green-600'
+                                  ? 'text-sea-ink-soft'
+                                  : 'text-palm'
                             }
                           >
                             {margin.toFixed(2)}
                             {sell > 0 && (
-                              <span className="text-xs text-gray-400 ml-1">
+                              <span className="text-xs text-sea-ink-soft ml-1">
                                 ({marginPct.toFixed(0)}%)
                               </span>
                             )}
@@ -230,7 +230,7 @@ export function ProductsContent({
                             ? 'bg-red-100 text-red-700'
                             : isLow
                               ? 'bg-amber-100 text-amber-700'
-                              : 'bg-green-100 text-green-700'
+                              : 'bg-palm/12 text-palm'
                         }`}
                       >
                         {isOut ? 'Out' : p.stockQty}
@@ -239,16 +239,23 @@ export function ProductsContent({
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
+                          to="/app/products/$productId/variants"
+                          params={{ productId: p.id }}
+                          className="text-sea-ink-soft hover:text-sea-ink text-xs"
+                        >
+                          Variants
+                        </Link>
+                        <Link
                           to="/app/products/$productId/adjust"
                           params={{ productId: p.id }}
-                          className="text-gray-500 hover:text-gray-900 text-xs"
+                          className="text-sea-ink-soft hover:text-sea-ink text-xs"
                         >
                           Adjust
                         </Link>
                         <Link
                           to="/app/products/$productId/edit"
                           params={{ productId: p.id }}
-                          className="text-blue-600 hover:underline text-xs"
+                          className="text-lagoon-deep hover:underline text-xs"
                         >
                           Edit
                         </Link>

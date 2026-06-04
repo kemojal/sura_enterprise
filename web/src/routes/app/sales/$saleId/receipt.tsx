@@ -53,7 +53,7 @@ function ReceiptPage() {
     lines.push('*Items:*')
     for (const item of items) {
       lines.push(
-        `• ${item.productName ?? 'Item'} x${item.quantity} = ${fmt(item.subtotal, currency)}`,
+        `• ${item.productName ?? 'Item'}${item.variantName ? ` — ${item.variantName}` : ''} x${item.quantity} = ${fmt(item.subtotal, currency)}`,
       )
     }
     lines.push('')
@@ -83,10 +83,10 @@ function ReceiptPage() {
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
       {/* Toolbar — hidden when printing */}
-      <div className="print:hidden flex items-center justify-between px-6 py-3 bg-white border-b">
+      <div className="print:hidden flex items-center justify-between px-6 py-3 bg-white border-b border-line">
         <Link
           to="/app/sales"
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900"
+          className="flex items-center gap-2 text-sm text-sea-ink-soft hover:text-sea-ink"
         >
           <ArrowLeft size={16} />
           Back to sales
@@ -111,7 +111,7 @@ function ReceiptPage() {
           </button>
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700"
+            className="btn-ink flex items-center gap-2 text-white px-4 py-2 rounded-lg text-sm font-medium"
           >
             <Printer size={16} />
             Print
@@ -134,26 +134,26 @@ function ReceiptPage() {
                 className="h-16 mx-auto mb-2 object-contain"
               />
             )}
-            <h1 className="text-xl font-bold text-gray-900 uppercase tracking-wide">
+            <h1 className="text-xl font-bold text-sea-ink uppercase tracking-wide">
               {shop?.name ?? 'StoreFlow'}
             </h1>
             {shop?.address && (
-              <p className="text-xs text-gray-500 mt-1">{shop.address}</p>
+              <p className="text-xs text-sea-ink-soft mt-1">{shop.address}</p>
             )}
             {shop?.phone && (
-              <p className="text-xs text-gray-500">{shop.phone}</p>
+              <p className="text-xs text-sea-ink-soft">{shop.phone}</p>
             )}
           </div>
 
           {/* Meta */}
           <div className="px-6 py-4 border-b border-dashed space-y-1 text-xs">
             <div className="flex justify-between">
-              <span className="text-gray-500">Receipt</span>
-              <span className="font-mono text-gray-700">#{sale.id.slice(-8).toUpperCase()}</span>
+              <span className="text-sea-ink-soft">Receipt</span>
+              <span className="font-mono text-sea-ink">#{sale.id.slice(-8).toUpperCase()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Date</span>
-              <span className="text-gray-700">
+              <span className="text-sea-ink-soft">Date</span>
+              <span className="text-sea-ink">
                 {new Date(sale.createdAt).toLocaleString('en-GH', {
                   dateStyle: 'medium',
                   timeStyle: 'short',
@@ -162,20 +162,20 @@ function ReceiptPage() {
             </div>
             {sale.cashierName && (
               <div className="flex justify-between">
-                <span className="text-gray-500">Cashier</span>
-                <span className="text-gray-700">{sale.cashierName}</span>
+                <span className="text-sea-ink-soft">Cashier</span>
+                <span className="text-sea-ink">{sale.cashierName}</span>
               </div>
             )}
             {sale.customerName && (
               <div className="flex justify-between">
-                <span className="text-gray-500">Customer</span>
-                <span className="text-gray-700">{sale.customerName}</span>
+                <span className="text-sea-ink-soft">Customer</span>
+                <span className="text-sea-ink">{sale.customerName}</span>
               </div>
             )}
             {sale.customerPhone && (
               <div className="flex justify-between">
-                <span className="text-gray-500">Phone</span>
-                <span className="text-gray-700">{sale.customerPhone}</span>
+                <span className="text-sea-ink-soft">Phone</span>
+                <span className="text-sea-ink">{sale.customerPhone}</span>
               </div>
             )}
           </div>
@@ -184,26 +184,32 @@ function ReceiptPage() {
           <div className="px-6 py-4 border-b border-dashed">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-gray-400 text-left">
+                <tr className="text-sea-ink-soft text-left">
                   <th className="pb-2 font-normal">Item</th>
                   <th className="pb-2 font-normal text-center w-8">Qty</th>
                   <th className="pb-2 font-normal text-right">Price</th>
                   <th className="pb-2 font-normal text-right">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-dashed divide-gray-100">
+              <tbody className="divide-y divide-dashed divide-line">
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td className="py-1.5 text-gray-800 pr-2">
+                    <td className="py-1.5 text-sea-ink pr-2">
                       {item.productName ?? 'Item'}
+                      {item.variantName && (
+                        <span className="text-sea-ink-soft">
+                          {' '}
+                          — {item.variantName}
+                        </span>
+                      )}
                     </td>
-                    <td className="py-1.5 text-center text-gray-600">
+                    <td className="py-1.5 text-center text-sea-ink-soft">
                       {item.quantity}
                     </td>
-                    <td className="py-1.5 text-right text-gray-600">
+                    <td className="py-1.5 text-right text-sea-ink-soft">
                       {Number(item.unitPrice).toFixed(2)}
                     </td>
-                    <td className="py-1.5 text-right font-medium text-gray-800">
+                    <td className="py-1.5 text-right font-medium text-sea-ink">
                       {Number(item.subtotal).toFixed(2)}
                     </td>
                   </tr>
@@ -216,7 +222,7 @@ function ReceiptPage() {
           <div className="px-6 py-4 border-b border-dashed space-y-1.5 text-xs">
             {Number(sale.discountAmount) > 0 && (
               <>
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-sea-ink-soft">
                   <span>Subtotal</span>
                   <span>
                     {fmt(
@@ -225,7 +231,7 @@ function ReceiptPage() {
                     )}
                   </span>
                 </div>
-                <div className="flex justify-between text-green-600">
+                <div className="flex justify-between text-palm">
                   <span>Discount</span>
                   <span>−{fmt(Number(sale.discountAmount), currency)}</span>
                 </div>
@@ -234,27 +240,27 @@ function ReceiptPage() {
             {Number(sale.taxAmount) > 0 && (
               <>
                 {Number(sale.discountAmount) === 0 && (
-                  <div className="flex justify-between text-gray-500">
+                  <div className="flex justify-between text-sea-ink-soft">
                     <span>Subtotal</span>
                     <span>{fmt(total - Number(sale.taxAmount), currency)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-sea-ink-soft">
                   <span>Tax</span>
                   <span>{fmt(Number(sale.taxAmount), currency)}</span>
                 </div>
               </>
             )}
-            <div className="flex justify-between font-bold text-sm text-gray-900">
+            <div className="flex justify-between font-bold text-sm text-sea-ink">
               <span>TOTAL</span>
               <span>{fmt(total, currency)}</span>
             </div>
-            <div className="flex justify-between text-gray-600">
+            <div className="flex justify-between text-sea-ink-soft">
               <span>Paid ({methodLabel[sale.paymentMethod]})</span>
               <span>{fmt(paid, currency)}</span>
             </div>
             {change > 0 && (
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-sea-ink-soft">
                 <span>Change</span>
                 <span>{fmt(change, currency)}</span>
               </div>
@@ -268,7 +274,7 @@ function ReceiptPage() {
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-6 text-center text-xs text-gray-400">
+          <div className="px-6 py-6 text-center text-xs text-sea-ink-soft">
             <p className="whitespace-pre-line">
               {shop?.receiptFooter || 'Thank you for your business!'}
             </p>

@@ -185,9 +185,30 @@ export const products = pgTable('products', {
   barcode: text('barcode'),
   expiryDate: timestamp('expiry_date'),
   imageUrl: text('image_url'),
+  hasVariants: boolean('has_variants').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Variants are the sellable SKUs of a product that has variants (e.g. size,
+// colour). When products.hasVariants is true, the parent's own stock/price is
+// ignored and these carry stock + price.
+export const productVariants = pgTable('product_variants', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  productId: text('product_id')
+    .notNull()
+    .references(() => products.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), // e.g. "Large / Red"
+  barcode: text('barcode'),
+  buyingPrice: decimal('buying_price', { precision: 12, scale: 2 }).notNull(),
+  sellingPrice: decimal('selling_price', { precision: 12, scale: 2 }).notNull(),
+  stockQty: integer('stock_qty').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 export const customers = pgTable('customers', {
@@ -237,6 +258,10 @@ export const saleItems = pgTable('sale_items', {
   productId: text('product_id').references(() => products.id, {
     onDelete: 'set null',
   }),
+  variantId: text('variant_id').references(() => productVariants.id, {
+    onDelete: 'set null',
+  }),
+  variantName: text('variant_name'),
   quantity: integer('quantity').notNull(),
   unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
   subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),

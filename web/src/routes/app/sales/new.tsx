@@ -5,7 +5,7 @@ import { SaleForm } from '#/components/forms/sale-form'
 import { RouteDialog } from '#/components/route-dialog'
 import { listCustomers } from '#/lib/customers'
 import { listHeldSales } from '#/lib/held-sales'
-import { listProducts } from '#/lib/products'
+import { listSellableItems } from '#/lib/products'
 import { getSaleConfig, listSales } from '#/lib/sales'
 import { SalesContent } from './index'
 
@@ -16,13 +16,15 @@ export const Route = createFileRoute('/app/sales/new')({
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
-    const [sales, products, customers, config, held] = await Promise.all([
+    const [sales, sellable, customers, config, held] = await Promise.all([
       listSales({ data: deps }),
-      listProducts({ data: {} }),
+      listSellableItems(),
       listCustomers({ data: {} }),
       getSaleConfig(),
       listHeldSales(),
     ])
+    // Plain products + every variant, each pickable on the POS
+    const products = [...sellable.products, ...sellable.variants]
     return { sales, products, customers, config, held }
   },
   component: NewSalePage,

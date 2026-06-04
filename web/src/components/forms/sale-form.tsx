@@ -16,6 +16,7 @@ import { createSale } from '#/lib/sales'
 interface SaleFormProps {
   products: {
     id: string
+    variantId?: string | null
     name: string
     sellingPrice: string
     stockQty: number
@@ -46,9 +47,15 @@ interface SaleFormProps {
 
 interface CartItem {
   productId: string
+  variantId: string | null
   name: string
   unitPrice: string
   quantity: number
+}
+
+// Distinct cart key — variants of the same product are separate lines
+function cartKey(productId: string, variantId: string | null) {
+  return variantId ? `v:${variantId}` : `p:${productId}`
 }
 
 export function SaleForm({
@@ -162,17 +169,24 @@ export function SaleForm({
   const total = taxInclusive ? discountedLine : discountedLine + taxAmount
 
   function addToCart(product: SaleFormProps['products'][number]) {
+    const variantId = product.variantId ?? null
+    const key = cartKey(product.id, variantId)
     setCart((prev) => {
-      const existing = prev.find((i) => i.productId === product.id)
+      const existing = prev.find(
+        (i) => cartKey(i.productId, i.variantId) === key,
+      )
       if (existing) {
         return prev.map((i) =>
-          i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i,
+          cartKey(i.productId, i.variantId) === key
+            ? { ...i, quantity: i.quantity + 1 }
+            : i,
         )
       }
       return [
         ...prev,
         {
           productId: product.id,
+          variantId,
           name: product.name,
           unitPrice: product.sellingPrice,
           quantity: 1,
@@ -181,14 +195,14 @@ export function SaleForm({
     })
   }
 
-  function updateQty(productId: string, qty: number) {
+  function updateQty(key: string, qty: number) {
     if (qty <= 0) {
-      setCart((prev) => prev.filter((i) => i.productId !== productId))
+      setCart((prev) => prev.filter((i) => cartKey(i.productId, i.variantId) !== key))
       return
     }
     setCart((prev) =>
       prev.map((i) =>
-        i.productId === productId ? { ...i, quantity: qty } : i,
+        cartKey(i.productId, i.variantId) === key ? { ...i, quantity: qty } : i,
       ),
     )
   }
@@ -206,6 +220,10 @@ export function SaleForm({
         data: {
           items: cart.map((i) => ({
             productId: i.productId,
+            variantId: i.variantId || undefined,
+            variantName: i.variantId
+              ? i.name.split(' — ').slice(1).join(' — ') || undefined
+              : undefined,
             quantity: i.quantity,
             unitPrice: i.unitPrice,
           })),
@@ -273,6 +291,7 @@ export function SaleForm({
       setCart(
         held.items.map((i) => ({
           productId: i.productId,
+          variantId: null,
           name: i.name,
           unitPrice: i.unitPrice,
           quantity: i.quantity,
@@ -404,9 +423,11 @@ export function SaleForm({
             <p className="text-sm text-gray-400">No items added.</p>
           ) : (
             <div className="divide-y">
-              {cart.map((item) => (
+              {cart.map((item) => {
+                const key = cartKey(item.productId, item.variantId)
+                return (
                 <div
-                  key={item.productId}
+                  key={key}
                   className="flex items-center justify-between gap-2 py-2"
                 >
                   <div className="min-w-0 flex-1">
@@ -420,9 +441,7 @@ export function SaleForm({
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() =>
-                        updateQty(item.productId, item.quantity - 1)
-                      }
+                      onClick={() => updateQty(key, item.quantity - 1)}
                       className="h-6 w-6 rounded border text-sm text-gray-600 hover:bg-gray-100"
                     >
                       −
@@ -432,9 +451,7 @@ export function SaleForm({
                     </span>
                     <button
                       type="button"
-                      onClick={() =>
-                        updateQty(item.productId, item.quantity + 1)
-                      }
+                      onClick={() => updateQty(key, item.quantity + 1)}
                       className="h-6 w-6 rounded border text-sm text-gray-600 hover:bg-gray-100"
                     >
                       +
@@ -444,7 +461,8 @@ export function SaleForm({
                     {(Number(item.unitPrice) * item.quantity).toFixed(2)}
                   </span>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
           {/* Discount input */}

@@ -4,7 +4,7 @@ import { and, eq, ilike } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { categories, products } from '#/db/schema'
+import { categories, productVariants, products } from '#/db/schema'
 import { logActivity } from './activity'
 import { getShopCtx, getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
@@ -35,6 +35,7 @@ export const listProducts = createServerFn({ method: 'GET' })
         categoryId: products.categoryId,
         imageUrl: products.imageUrl,
         barcode: products.barcode,
+        hasVariants: products.hasVariants,
         categoryName: categories.name,
       })
       .from(products)
@@ -42,6 +43,77 @@ export const listProducts = createServerFn({ method: 'GET' })
       .where(and(...conditions))
       .orderBy(products.name)
   })
+
+// Sellable units for the POS: products without variants + every active variant
+// of products with variants, each as its own pickable line.
+export const listSellableItems = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const request = getRequest()
+    const { shopId } = await getShopCtx(request.headers)
+
+    const plainProducts = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        sellingPrice: products.sellingPrice,
+        stockQty: products.stockQty,
+        imageUrl: products.imageUrl,
+        barcode: products.barcode,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(products.shopId, shopId),
+          eq(products.isActive, true),
+          eq(products.hasVariants, false),
+        ),
+      )
+      .orderBy(products.name)
+
+    const variants = await db
+      .select({
+        variantId: productVariants.id,
+        productId: productVariants.productId,
+        productName: products.name,
+        variantName: productVariants.name,
+        sellingPrice: productVariants.sellingPrice,
+        stockQty: productVariants.stockQty,
+        barcode: productVariants.barcode,
+        imageUrl: products.imageUrl,
+      })
+      .from(productVariants)
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .where(
+        and(
+          eq(productVariants.shopId, shopId),
+          eq(productVariants.isActive, true),
+          eq(products.isActive, true),
+        ),
+      )
+      .orderBy(products.name)
+
+    return {
+      products: plainProducts.map((p) => ({
+        id: p.id,
+        variantId: null as string | null,
+        name: p.name,
+        sellingPrice: p.sellingPrice,
+        stockQty: p.stockQty,
+        imageUrl: p.imageUrl,
+        barcode: p.barcode,
+      })),
+      variants: variants.map((v) => ({
+        id: v.productId,
+        variantId: v.variantId,
+        name: `${v.productName} — ${v.variantName}`,
+        sellingPrice: v.sellingPrice,
+        stockQty: v.stockQty,
+        imageUrl: v.imageUrl,
+        barcode: v.barcode,
+      })),
+    }
+  },
+)
 
 export const listCategories = createServerFn({ method: 'GET' }).handler(async () => {
   const request = getRequest()
@@ -71,6 +143,41 @@ export const findProductByBarcode = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const request = getRequest()
     const { shopId } = await getShopCtx(request.headers)
+
+    // Variant barcodes take priority (they're the sellable SKU)
+    const [variant] = await db
+      .select({
+        productId: productVariants.productId,
+        variantId: productVariants.id,
+        productName: products.name,
+        variantName: productVariants.name,
+        sellingPrice: productVariants.sellingPrice,
+        stockQty: productVariants.stockQty,
+        imageUrl: products.imageUrl,
+        barcode: productVariants.barcode,
+      })
+      .from(productVariants)
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .where(
+        and(
+          eq(productVariants.shopId, shopId),
+          eq(productVariants.barcode, data.barcode),
+          eq(productVariants.isActive, true),
+        ),
+      )
+      .limit(1)
+    if (variant) {
+      return {
+        id: variant.productId,
+        variantId: variant.variantId,
+        name: `${variant.productName} — ${variant.variantName}`,
+        sellingPrice: variant.sellingPrice,
+        stockQty: variant.stockQty,
+        imageUrl: variant.imageUrl,
+        barcode: variant.barcode,
+      }
+    }
+
     const [product] = await db
       .select({
         id: products.id,
@@ -85,11 +192,12 @@ export const findProductByBarcode = createServerFn({ method: 'GET' })
         and(
           eq(products.shopId, shopId),
           eq(products.barcode, data.barcode),
+          eq(products.hasVariants, false),
           eq(products.isActive, true),
         ),
       )
       .limit(1)
-    return product ?? null
+    return product ? { ...product, variantId: null as string | null } : null
   })
 
 export const createProduct = createServerFn({ method: 'POST' })
