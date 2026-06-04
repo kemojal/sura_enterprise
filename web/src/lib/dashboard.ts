@@ -1,13 +1,45 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
-import { and, desc, eq, gte, lte, sql, sum } from 'drizzle-orm'
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
+import { z } from 'zod'
 
 import { db } from '#/db/index'
 import { expenses, products, saleItems, saleReturns, sales, shops } from '#/db/schema'
 import { getShopCtx } from './context'
 
-export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export type DashboardPeriod = 'today' | '7d' | '30d' | 'month'
+
+function periodRange(period: DashboardPeriod): { start: Date; end: Date } {
+  const end = new Date()
+  end.setHours(23, 59, 59, 999)
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+
+  if (period === '7d') start.setDate(start.getDate() - 6)
+  else if (period === '30d') start.setDate(start.getDate() - 29)
+  else if (period === 'month') start.setDate(1)
+  // 'today' → start already at today 00:00
+
+  return { start, end }
+}
+
+async function sumSales(shopId: string, start: Date, end: Date) {
+  const [row] = await db
+    .select({ total: sql<string>`coalesce(sum(${sales.totalAmount}), 0)` })
+    .from(sales)
+    .where(
+      and(eq(sales.shopId, shopId), gte(sales.createdAt, start), lte(sales.createdAt, end)),
+    )
+  return Number(row?.total ?? 0)
+}
+
+export const getDashboardStats = createServerFn({ method: 'GET' })
+  .inputValidator(
+    z.object({
+      period: z.enum(['today', '7d', '30d', 'month']).default('today'),
+    }),
+  )
+  .handler(async ({ data }) => {
     const request = getRequest()
     const { shopId } = await getShopCtx(request.headers)
 
@@ -17,67 +49,49 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
       .where(eq(shops.id, shopId))
       .limit(1)
 
+    const { start: periodStart, end: periodEnd } = periodRange(data.period)
+
+    // Previous equal-length window for delta comparison
+    const spanMs = periodEnd.getTime() - periodStart.getTime()
+    const prevEnd = new Date(periodStart.getTime() - 1)
+    const prevStart = new Date(prevEnd.getTime() - spanMs)
+
+    const [grossSales, prevGrossSales, expensesRow, refundsRow] = await Promise.all([
+      sumSales(shopId, periodStart, periodEnd),
+      sumSales(shopId, prevStart, prevEnd),
+      db
+        .select({ total: sql<string>`coalesce(sum(${expenses.amount}), 0)` })
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.shopId, shopId),
+            gte(expenses.date, periodStart),
+            lte(expenses.date, periodEnd),
+          ),
+        )
+        .then((r) => Number(r[0]?.total ?? 0)),
+      db
+        .select({ total: sql<string>`coalesce(sum(${saleReturns.refundAmount}), 0)` })
+        .from(saleReturns)
+        .where(
+          and(
+            eq(saleReturns.shopId, shopId),
+            gte(saleReturns.createdAt, periodStart),
+            lte(saleReturns.createdAt, periodEnd),
+          ),
+        )
+        .then((r) => Number(r[0]?.total ?? 0)),
+    ])
+
+    const periodSales = grossSales - refundsRow
+    const periodExpenses = expensesRow
+
+    // Last 7 days chart — always last 7 days regardless of period, bucketed in
+    // JS using the same local-day basis so chart and cards never disagree.
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
     const todayEnd = new Date()
     todayEnd.setHours(23, 59, 59, 999)
-
-    const [todaySalesRow] = await db
-      .select({ total: sum(sales.totalAmount) })
-      .from(sales)
-      .where(
-        and(
-          eq(sales.shopId, shopId),
-          gte(sales.createdAt, todayStart),
-          lte(sales.createdAt, todayEnd),
-        ),
-      )
-
-    const [todayExpensesRow] = await db
-      .select({ total: sum(expenses.amount) })
-      .from(expenses)
-      .where(
-        and(
-          eq(expenses.shopId, shopId),
-          gte(expenses.date, todayStart),
-          lte(expenses.date, todayEnd),
-        ),
-      )
-
-    const [todayRefundsRow] = await db
-      .select({ total: sum(saleReturns.refundAmount) })
-      .from(saleReturns)
-      .where(
-        and(
-          eq(saleReturns.shopId, shopId),
-          gte(saleReturns.createdAt, todayStart),
-          lte(saleReturns.createdAt, todayEnd),
-        ),
-      )
-
-    const todaySales = Number(todaySalesRow?.total ?? 0) - Number(todayRefundsRow?.total ?? 0)
-    const todayExpenses = Number(todayExpensesRow?.total ?? 0)
-
-    // Yesterday's sales for delta comparison
-    const yesterdayStart = new Date(todayStart)
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1)
-    const yesterdayEnd = new Date(todayEnd)
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1)
-
-    const [yesterdaySalesRow] = await db
-      .select({ total: sum(sales.totalAmount) })
-      .from(sales)
-      .where(
-        and(
-          eq(sales.shopId, shopId),
-          gte(sales.createdAt, yesterdayStart),
-          lte(sales.createdAt, yesterdayEnd),
-        ),
-      )
-    const yesterdaySales = Number(yesterdaySalesRow?.total ?? 0)
-
-    // Last 7 days sales — bucket in JS using the same local-day basis as the
-    // today/yesterday cards, so the chart and stat cards never disagree.
     const weekStart = new Date(todayStart)
     weekStart.setDate(weekStart.getDate() - 6)
 
@@ -92,17 +106,12 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
         ),
       )
 
-    function dayKey(d: Date) {
-      const x = new Date(d)
-      x.setHours(0, 0, 0, 0)
-      return x.getTime()
-    }
-
     const bucketTotals = new Map<number, number>()
     for (const row of weekRows) {
       if (!row.createdAt) continue
-      const key = dayKey(new Date(row.createdAt))
-      bucketTotals.set(key, (bucketTotals.get(key) ?? 0) + Number(row.total))
+      const d = new Date(row.createdAt)
+      d.setHours(0, 0, 0, 0)
+      bucketTotals.set(d.getTime(), (bucketTotals.get(d.getTime()) ?? 0) + Number(row.total))
     }
 
     const weeklySales: { date: string; label: string; total: number }[] = []
@@ -149,6 +158,7 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
       .from(sales)
       .where(and(eq(sales.shopId, shopId), eq(sales.status, 'credit')))
 
+    // Best sellers scoped to the selected period
     const topProducts = await db
       .select({
         productId: saleItems.productId,
@@ -158,16 +168,23 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
       .from(saleItems)
       .innerJoin(products, eq(saleItems.productId, products.id))
       .innerJoin(sales, eq(saleItems.saleId, sales.id))
-      .where(eq(sales.shopId, shopId))
+      .where(
+        and(
+          eq(sales.shopId, shopId),
+          gte(sales.createdAt, periodStart),
+          lte(sales.createdAt, periodEnd),
+        ),
+      )
       .groupBy(saleItems.productId, products.name)
       .orderBy(desc(sql`sum(${saleItems.quantity})`))
       .limit(5)
 
     return {
-      todaySales,
-      yesterdaySales,
-      todayExpenses,
-      estimatedProfit: todaySales - todayExpenses,
+      period: data.period,
+      periodSales,
+      prevSales: prevGrossSales,
+      periodExpenses,
+      estimatedProfit: periodSales - periodExpenses,
       totalDebt: Number(debtRow?.total ?? 0),
       weeklySales,
       lowStock,
@@ -175,5 +192,4 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
       topProducts,
       currency: shop?.currency ?? 'GHS',
     }
-  },
-)
+  })

@@ -9,13 +9,28 @@ import {
   Wallet,
 } from 'lucide-react'
 
+import { z } from 'zod'
+
 import { can } from '#/lib/permissions'
-import { getDashboardStats } from '#/lib/dashboard'
+import { getDashboardStats, type DashboardPeriod } from '#/lib/dashboard'
 
 export const Route = createFileRoute('/app/dashboard')({
-  loader: () => getDashboardStats(),
+  validateSearch: z.object({
+    period: z.enum(['today', '7d', '30d', 'month']).optional(),
+  }),
+  loaderDeps: ({ search }) => ({ period: search.period ?? 'today' }),
+  loader: ({ deps }) => getDashboardStats({ data: { period: deps.period } }),
   component: DashboardPage,
 })
+
+const periodLabels: Record<DashboardPeriod, string> = {
+  today: 'Today',
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  month: 'This month',
+}
+
+const periodOptions: DashboardPeriod[] = ['today', '7d', '30d', 'month']
 
 function StatCard({
   label,
@@ -63,14 +78,17 @@ function fmt(amount: number, currency: string) {
   }).format(amount)
 }
 
-function salesDelta(today: number, yesterday: number): { text: string; positive: boolean } | null {
-  if (yesterday === 0) {
-    return today > 0 ? { text: 'New activity vs yesterday', positive: true } : null
+function salesDelta(
+  current: number,
+  previous: number,
+): { text: string; positive: boolean } | null {
+  if (previous === 0) {
+    return current > 0 ? { text: 'New activity vs prev period', positive: true } : null
   }
-  const pct = ((today - yesterday) / yesterday) * 100
+  const pct = ((current - previous) / previous) * 100
   const rounded = Math.abs(pct).toFixed(0)
   return {
-    text: `${pct >= 0 ? '+' : '−'}${rounded}% vs yesterday`,
+    text: `${pct >= 0 ? '+' : '−'}${rounded}% vs prev period`,
     positive: pct >= 0,
   }
 }
@@ -119,7 +137,10 @@ function WeeklyChart({
 function DashboardPage() {
   const stats = Route.useLoaderData()
   const { role } = Route.useRouteContext()
-  const delta = salesDelta(stats.todaySales, stats.yesterdaySales)
+  const navigate = Route.useNavigate()
+  const period = (stats.period ?? 'today') as DashboardPeriod
+  const delta = salesDelta(stats.periodSales, stats.prevSales)
+  const periodWord = periodLabels[period]
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
@@ -151,21 +172,41 @@ function DashboardPage() {
         </div>
       </div>
 
+      {/* Period selector */}
+      <div className="flex flex-wrap gap-2">
+        {periodOptions.map((p) => {
+          const active = period === p
+          return (
+            <button
+              key={p}
+              onClick={() => navigate({ search: { period: p } })}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                active
+                  ? 'bg-gray-900 text-white'
+                  : 'border text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {periodLabels[p]}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard
-          label="Today's Sales"
-          value={fmt(stats.todaySales, stats.currency)}
+          label={`${periodWord} Sales`}
+          value={fmt(stats.periodSales, stats.currency)}
           sub={delta?.text}
           positive={delta?.positive}
         />
         <StatCard
-          label="Today's Expenses"
-          value={fmt(stats.todayExpenses, stats.currency)}
+          label={`${periodWord} Expenses`}
+          value={fmt(stats.periodExpenses, stats.currency)}
           positive={false}
         />
         <StatCard
-          label="Est. Profit Today"
+          label={`${periodWord} Profit`}
           value={fmt(stats.estimatedProfit, stats.currency)}
           positive={stats.estimatedProfit >= 0}
         />
