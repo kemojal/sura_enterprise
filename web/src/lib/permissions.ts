@@ -3,6 +3,7 @@ export type StaffRole = 'owner' | 'manager' | 'cashier'
 export type Resource =
   | 'products'
   | 'products:write'
+  | 'categories'
   | 'sales'
   | 'expenses'
   | 'staff'
@@ -19,6 +20,7 @@ const matrix: Record<Resource, StaffRole[]> = {
   dashboard: ['owner', 'manager', 'cashier'],
   products: ['owner', 'manager', 'cashier'],
   'products:write': ['owner', 'manager'],
+  categories: ['owner', 'manager'],
   sales: ['owner', 'manager', 'cashier'],
   expenses: ['owner', 'manager'],
   staff: ['owner'],

@@ -14,6 +14,7 @@ import {
   Receipt,
   Settings,
   ShoppingCart,
+  Tag,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -52,6 +53,12 @@ const navItems = [
     label: 'Products',
     icon: Package,
     resource: 'products',
+  },
+  {
+    to: '/app/categories',
+    label: 'Categories',
+    icon: Tag,
+    resource: 'categories',
   },
   { to: '/app/sales', label: 'Sales', icon: ShoppingCart, resource: 'sales' },
   {
