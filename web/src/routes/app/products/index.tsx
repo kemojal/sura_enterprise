@@ -246,6 +246,13 @@ export function ProductsContent({
                           Variants
                         </Link>
                         <Link
+                          to="/app/products/$productId/ledger"
+                          params={{ productId: p.id }}
+                          className="text-sea-ink-soft hover:text-sea-ink text-xs"
+                        >
+                          History
+                        </Link>
+                        <Link
                           to="/app/products/$productId/adjust"
                           params={{ productId: p.id }}
                           className="text-sea-ink-soft hover:text-sea-ink text-xs"
