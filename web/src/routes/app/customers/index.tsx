@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { Button } from '#/components/ui/button'
+import { ExportButton } from '#/components/export-button'
 import { listCustomers } from '#/lib/customers'
 
 export const Route = createFileRoute('/app/customers/')({
@@ -26,9 +27,21 @@ export function CustomersContent({
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">Customers</h2>
-        <Link to="/app/customers/new">
-          <Button size="sm">+ Add customer</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            rows={customers}
+            filename="customers"
+            columns={[
+              { header: 'Name', value: (c) => c.name },
+              { header: 'Phone', value: (c) => c.phone ?? '' },
+              { header: 'Email', value: (c) => c.email ?? '' },
+              { header: 'Outstanding Debt', value: (c) => Number(c.totalDebt).toFixed(2) },
+            ]}
+          />
+          <Link to="/app/customers/new">
+            <Button size="sm">+ Add customer</Button>
+          </Link>
+        </div>
       </div>
 
       {customers.length === 0 ? (

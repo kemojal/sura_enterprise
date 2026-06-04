@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { z } from 'zod'
 
 import { Button } from '#/components/ui/button'
+import { ExportButton } from '#/components/export-button'
 import { Input } from '#/components/ui/input'
 import { deleteProduct, listProducts } from '#/lib/products'
 
@@ -53,9 +54,24 @@ export function ProductsContent({
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">Products</h2>
-        <Link to="/app/products/new">
-          <Button size="sm">+ Add product</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            rows={products}
+            filename="products"
+            columns={[
+              { header: 'Name', value: (p) => p.name },
+              { header: 'Category', value: (p) => p.categoryName ?? '' },
+              { header: 'Buying Price', value: (p) => p.buyingPrice },
+              { header: 'Selling Price', value: (p) => p.sellingPrice },
+              { header: 'Stock', value: (p) => p.stockQty },
+              { header: 'Low Stock Alert', value: (p) => p.lowStockThreshold },
+              { header: 'Barcode', value: (p) => p.barcode ?? '' },
+            ]}
+          />
+          <Link to="/app/products/new">
+            <Button size="sm">+ Add product</Button>
+          </Link>
+        </div>
       </div>
 
       <Input

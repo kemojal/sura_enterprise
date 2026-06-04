@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { z } from 'zod'
 
 import { Button } from '#/components/ui/button'
+import { ExportButton } from '#/components/export-button'
 import { can } from '#/lib/permissions'
 import { listExpenses } from '#/lib/expenses'
 
@@ -65,9 +66,22 @@ export function ExpensesContent({
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">Expenses</h2>
-        <Link to="/app/expenses/new">
-          <Button size="sm">+ Add expense</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            rows={expenses}
+            filename="expenses"
+            columns={[
+              { header: 'Date', value: (e) => new Date(e.date).toLocaleDateString() },
+              { header: 'Category', value: (e) => catLabel[e.category] ?? e.category },
+              { header: 'Description', value: (e) => e.description ?? '' },
+              { header: 'Recorded By', value: (e) => e.recordedBy ?? '' },
+              { header: 'Amount', value: (e) => Number(e.amount).toFixed(2) },
+            ]}
+          />
+          <Link to="/app/expenses/new">
+            <Button size="sm">+ Add expense</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-3 items-center">

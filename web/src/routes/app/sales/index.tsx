@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { z } from 'zod'
 
 import { Button } from '#/components/ui/button'
+import { ExportButton } from '#/components/export-button'
 import { listSales } from '#/lib/sales'
 
 export const Route = createFileRoute('/app/sales/')({
@@ -53,9 +54,24 @@ export function SalesContent({
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">Sales</h2>
-        <Link to="/app/sales/new">
-          <Button size="sm">+ New sale</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            rows={sales}
+            filename="sales"
+            columns={[
+              { header: 'Date', value: (s) => new Date(s.createdAt).toLocaleString() },
+              { header: 'Customer', value: (s) => s.customerName ?? '' },
+              { header: 'Cashier', value: (s) => s.cashierName ?? '' },
+              { header: 'Method', value: (s) => methodLabel[s.paymentMethod] },
+              { header: 'Total', value: (s) => s.totalAmount },
+              { header: 'Paid', value: (s) => s.amountPaid },
+              { header: 'Status', value: (s) => s.status },
+            ]}
+          />
+          <Link to="/app/sales/new">
+            <Button size="sm">+ New sale</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-3 items-center">
