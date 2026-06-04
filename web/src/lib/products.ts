@@ -10,12 +10,19 @@ import { getShopCtx, getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
 export const listProducts = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ search: z.string().optional() }))
+  .inputValidator(
+    z.object({
+      search: z.string().optional(),
+      categoryId: z.string().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     const request = getRequest()
     const { shopId } = await getShopCtx(request.headers)
     const conditions = [eq(products.shopId, shopId)]
     if (data.search) conditions.push(ilike(products.name, `%${data.search}%`))
+    if (data.categoryId)
+      conditions.push(eq(products.categoryId, data.categoryId))
     return db
       .select({
         id: products.id,

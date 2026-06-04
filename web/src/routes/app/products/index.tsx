@@ -6,38 +6,65 @@ import { z } from 'zod'
 import { Button } from '#/components/ui/button'
 import { ExportButton } from '#/components/export-button'
 import { Input } from '#/components/ui/input'
-import { deleteProduct, listProducts } from '#/lib/products'
+import { deleteProduct, listCategories, listProducts } from '#/lib/products'
+
+type CategoryOption = { id: string; name: string }
 
 export const Route = createFileRoute('/app/products/')({
-  validateSearch: z.object({ search: z.string().optional() }),
-  loaderDeps: ({ search }) => ({ search: search.search }),
-  loader: ({ deps }) => listProducts({ data: { search: deps.search } }),
+  validateSearch: z.object({
+    search: z.string().optional(),
+    categoryId: z.string().optional(),
+  }),
+  loaderDeps: ({ search }) => ({
+    search: search.search,
+    categoryId: search.categoryId,
+  }),
+  loader: async ({ deps }) => {
+    const [products, categories] = await Promise.all([
+      listProducts({ data: { search: deps.search, categoryId: deps.categoryId } }),
+      listCategories(),
+    ])
+    return { products, categories }
+  },
   component: ProductsPage,
 })
 
 function ProductsPage() {
-  const products = Route.useLoaderData()
-  const { search } = Route.useSearch()
+  const { products, categories } = Route.useLoaderData()
+  const { search, categoryId } = Route.useSearch()
   const navigate = Route.useNavigate()
 
   return (
     <ProductsContent
       products={products}
+      categories={categories}
       search={search}
-      onSearch={(value) => navigate({ search: { search: value || undefined } })}
+      categoryId={categoryId}
+      onSearch={(value) =>
+        navigate({ search: (s) => ({ ...s, search: value || undefined }) })
+      }
+      onCategoryChange={(value) =>
+        navigate({ search: (s) => ({ ...s, categoryId: value || undefined }) })
+      }
     />
   )
 }
 
 export function ProductsContent({
   products,
+  categories,
   search,
+  categoryId,
   onSearch,
+  onCategoryChange,
   children,
 }: {
   products: Awaited<ReturnType<typeof listProducts>>
+  categories?: CategoryOption[]
   search?: string
+  categoryId?: string
   onSearch: (value: string) => void
+  onCategoryChange?: (value: string) => void
   children?: ReactNode
 }) {
   const router = useRouter()
@@ -79,12 +106,28 @@ export function ProductsContent({
         </div>
       </div>
 
-      <Input
-        placeholder="Search products…"
-        defaultValue={search ?? ''}
-        onChange={(e) => onSearch(e.target.value)}
-        className="max-w-xs"
-      />
+      <div className="flex flex-wrap gap-3 items-center">
+        <Input
+          placeholder="Search products…"
+          defaultValue={search ?? ''}
+          onChange={(e) => onSearch(e.target.value)}
+          className="max-w-xs"
+        />
+        {categories && categories.length > 0 && onCategoryChange && (
+          <select
+            value={categoryId ?? ''}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            className="border rounded-md px-3 py-2 text-sm"
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {products.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
