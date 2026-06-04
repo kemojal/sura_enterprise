@@ -377,3 +377,20 @@ export const activityLog = pgTable('activity_log', {
   description: text('description').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// End-of-day cash drawer count vs expected cash sales.
+export const cashReconciliations = pgTable('cash_reconciliations', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  staffId: text('staff_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  actorName: text('actor_name'),
+  expectedCash: decimal('expected_cash', { precision: 12, scale: 2 }).notNull(),
+  countedCash: decimal('counted_cash', { precision: 12, scale: 2 }).notNull(),
+  variance: decimal('variance', { precision: 12, scale: 2 }).notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})

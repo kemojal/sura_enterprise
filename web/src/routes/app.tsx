@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 import {
   Activity,
+  Banknote,
   BarChart3,
   ClipboardList,
   LayoutDashboard,
@@ -84,6 +85,12 @@ const navItems = [
     label: 'Purchase Orders',
     icon: ClipboardList,
     resource: 'purchase_orders',
+  },
+  {
+    to: '/app/cash',
+    label: 'Cash',
+    icon: Banknote,
+    resource: 'cash',
   },
   {
     to: '/app/reports',
