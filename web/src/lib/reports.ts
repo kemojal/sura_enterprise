@@ -4,7 +4,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { expenses, products, saleItems, saleReturns, sales, shops } from '#/db/schema'
+import { expenses, products, saleItems, saleReturns, sales, shops, staffMembers } from '#/db/schema'
 import { getShopCtxWithPermission } from './context'
 
 export const getReport = createServerFn({ method: 'GET' })
@@ -167,6 +167,81 @@ export const getReport = createServerFn({ method: 'GET' })
       expByCategory,
       salesByMethod,
       dailySales,
+      currency: shop?.currency ?? 'GHS',
+    }
+  })
+
+// Per-cashier sales performance over a date range. Completed sales only.
+export const getStaffPerformance = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ from: z.string(), to: z.string() }))
+  .handler(async ({ data }) => {
+    const request = getRequest()
+    const { shopId } = await getShopCtxWithPermission(request.headers, 'reports')
+
+    const [shop] = await db
+      .select({ currency: shops.currency })
+      .from(shops)
+      .where(eq(shops.id, shopId))
+      .limit(1)
+
+    const from = new Date(data.from)
+    const to = new Date(data.to)
+    to.setHours(23, 59, 59, 999)
+
+    const conditions = [
+      eq(sales.shopId, shopId),
+      eq(sales.status, 'completed'),
+      gte(sales.createdAt, from),
+      lte(sales.createdAt, to),
+    ]
+
+    // Revenue + transaction count per cashier.
+    const perCashier = await db
+      .select({
+        staffId: sales.cashierId,
+        name: staffMembers.name,
+        revenue: sql<string>`coalesce(sum(${sales.totalAmount}), 0)`,
+        txns: sql<number>`cast(count(*) as int)`,
+      })
+      .from(sales)
+      .leftJoin(staffMembers, eq(sales.cashierId, staffMembers.id))
+      .where(and(...conditions))
+      .groupBy(sales.cashierId, staffMembers.name)
+      .orderBy(desc(sql`sum(${sales.totalAmount})`))
+
+    // Units sold per cashier (join sale items through the same filtered sales).
+    const unitsRows = await db
+      .select({
+        staffId: sales.cashierId,
+        units: sql<number>`cast(coalesce(sum(${saleItems.quantity}), 0) as int)`,
+      })
+      .from(sales)
+      .innerJoin(saleItems, eq(saleItems.saleId, sales.id))
+      .where(and(...conditions))
+      .groupBy(sales.cashierId)
+
+    const unitsBy = new Map(unitsRows.map((r) => [r.staffId, r.units]))
+
+    const rows = perCashier.map((r) => {
+      const revenue = Number(r.revenue)
+      const txns = r.txns
+      return {
+        staffId: r.staffId,
+        name: r.name ?? 'Unknown / removed',
+        revenue,
+        txns,
+        units: unitsBy.get(r.staffId) ?? 0,
+        avgBasket: txns > 0 ? revenue / txns : 0,
+      }
+    })
+
+    return {
+      rows,
+      totals: {
+        revenue: rows.reduce((s, r) => s + r.revenue, 0),
+        txns: rows.reduce((s, r) => s + r.txns, 0),
+        units: rows.reduce((s, r) => s + r.units, 0),
+      },
       currency: shop?.currency ?? 'GHS',
     }
   })
