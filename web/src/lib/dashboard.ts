@@ -47,6 +47,64 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
     const todaySales = Number(todaySalesRow?.total ?? 0)
     const todayExpenses = Number(todayExpensesRow?.total ?? 0)
 
+    // Yesterday's sales for delta comparison
+    const yesterdayStart = new Date(todayStart)
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1)
+    const yesterdayEnd = new Date(todayEnd)
+    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1)
+
+    const [yesterdaySalesRow] = await db
+      .select({ total: sum(sales.totalAmount) })
+      .from(sales)
+      .where(
+        and(
+          eq(sales.shopId, shopId),
+          gte(sales.createdAt, yesterdayStart),
+          lte(sales.createdAt, yesterdayEnd),
+        ),
+      )
+    const yesterdaySales = Number(yesterdaySalesRow?.total ?? 0)
+
+    // Last 7 days sales — bucket in JS using the same local-day basis as the
+    // today/yesterday cards, so the chart and stat cards never disagree.
+    const weekStart = new Date(todayStart)
+    weekStart.setDate(weekStart.getDate() - 6)
+
+    const weekRows = await db
+      .select({ createdAt: sales.createdAt, total: sales.totalAmount })
+      .from(sales)
+      .where(
+        and(
+          eq(sales.shopId, shopId),
+          gte(sales.createdAt, weekStart),
+          lte(sales.createdAt, todayEnd),
+        ),
+      )
+
+    function dayKey(d: Date) {
+      const x = new Date(d)
+      x.setHours(0, 0, 0, 0)
+      return x.getTime()
+    }
+
+    const bucketTotals = new Map<number, number>()
+    for (const row of weekRows) {
+      if (!row.createdAt) continue
+      const key = dayKey(new Date(row.createdAt))
+      bucketTotals.set(key, (bucketTotals.get(key) ?? 0) + Number(row.total))
+    }
+
+    const weeklySales: { date: string; label: string; total: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(todayStart)
+      d.setDate(d.getDate() - i)
+      weeklySales.push({
+        date: d.toISOString().slice(0, 10),
+        label: d.toLocaleDateString('en-GH', { weekday: 'short' }),
+        total: bucketTotals.get(d.getTime()) ?? 0,
+      })
+    }
+
     const lowStock = await db
       .select({
         id: products.id,
@@ -96,9 +154,11 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
 
     return {
       todaySales,
+      yesterdaySales,
       todayExpenses,
       estimatedProfit: todaySales - todayExpenses,
       totalDebt: Number(debtRow?.total ?? 0),
+      weeklySales,
       lowStock,
       outOfStock,
       topProducts,
