@@ -72,6 +72,24 @@ export const getReport = createServerFn({ method: 'GET' })
       .groupBy(expenses.category)
       .orderBy(desc(sql`sum(${expenses.amount})`))
 
+    // Profitability per product: units sold × (sale price − current buying price).
+    // Uses current buyingPrice as cost basis (historical cost not captured per line).
+    const productProfit = await db
+      .select({
+        productId: saleItems.productId,
+        name: products.name,
+        unitsSold: sql<number>`cast(sum(${saleItems.quantity}) as int)`,
+        revenue: sql<string>`sum(${saleItems.subtotal})`,
+        cost: sql<string>`sum(${saleItems.quantity} * ${products.buyingPrice})`,
+      })
+      .from(saleItems)
+      .innerJoin(products, eq(saleItems.productId, products.id))
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
+      .where(and(...salesConditions))
+      .groupBy(saleItems.productId, products.name)
+      .orderBy(desc(sql`sum(${saleItems.subtotal}) - sum(${saleItems.quantity} * ${products.buyingPrice})`))
+      .limit(10)
+
     const [refundsSummary] = await db
       .select({ total: sql<string>`coalesce(sum(${saleReturns.refundAmount}), 0)` })
       .from(saleReturns)
@@ -88,13 +106,20 @@ export const getReport = createServerFn({ method: 'GET' })
     const revenue = grossRevenue - refunds
     const totalExpenses = Number(expSummary?.total ?? 0)
 
+    const grossProfit = productProfit.reduce(
+      (sum, p) => sum + (Number(p.revenue) - Number(p.cost)),
+      0,
+    )
+
     return {
       revenue,
       refunds,
       totalExpenses,
       profit: revenue - totalExpenses,
+      grossProfit,
       salesCount: salesSummary?.count ?? 0,
       topProducts,
+      productProfit,
       expByCategory,
       currency: shop?.currency ?? 'GHS',
     }

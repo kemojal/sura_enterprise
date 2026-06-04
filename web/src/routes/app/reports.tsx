@@ -80,9 +80,10 @@ function ReportsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         {[
           { label: 'Revenue', value: fmt(data.revenue), pos: true },
+          { label: 'Refunds', value: fmt(data.refunds), pos: false },
           { label: 'Expenses', value: fmt(data.totalExpenses), pos: false },
           {
             label: 'Net Profit',
@@ -164,6 +165,60 @@ function ReportsPage() {
             </table>
           )}
         </div>
+      </div>
+
+      {/* Product profitability */}
+      <div className="bg-white rounded-xl border p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium text-gray-700">Most Profitable Products</h3>
+          <span className="text-sm text-gray-500">
+            Gross profit: <strong className="text-green-700">{fmt(data.grossProfit)}</strong>
+          </span>
+        </div>
+        {data.productProfit.length === 0 ? (
+          <p className="text-sm text-gray-400">No sales in this period.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-gray-400 text-left">
+                <th className="pb-2 font-normal">Product</th>
+                <th className="pb-2 font-normal text-right">Units</th>
+                <th className="pb-2 font-normal text-right">Revenue</th>
+                <th className="pb-2 font-normal text-right">Cost</th>
+                <th className="pb-2 font-normal text-right">Profit</th>
+                <th className="pb-2 font-normal text-right">Margin</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {data.productProfit.map((p, i) => {
+                const revenue = Number(p.revenue)
+                const cost = Number(p.cost)
+                const profit = revenue - cost
+                const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+                return (
+                  <tr key={p.productId ?? i}>
+                    <td className="py-2 text-gray-700">{p.name}</td>
+                    <td className="py-2 text-right text-gray-600">{p.unitsSold}</td>
+                    <td className="py-2 text-right text-gray-600">
+                      {revenue.toFixed(2)}
+                    </td>
+                    <td className="py-2 text-right text-gray-600">
+                      {cost.toFixed(2)}
+                    </td>
+                    <td
+                      className={`py-2 text-right font-medium ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}
+                    >
+                      {profit.toFixed(2)}
+                    </td>
+                    <td className="py-2 text-right text-gray-500">
+                      {margin.toFixed(0)}%
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )

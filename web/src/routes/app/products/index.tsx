@@ -149,6 +149,7 @@ export function ProductsContent({
                 <th className="px-4 py-3 font-medium">Category</th>
                 <th className="px-4 py-3 font-medium text-right">Buy</th>
                 <th className="px-4 py-3 font-medium text-right">Sell</th>
+                <th className="px-4 py-3 font-medium text-right">Margin</th>
                 <th className="px-4 py-3 font-medium text-right">Stock</th>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
@@ -184,6 +185,33 @@ export function ProductsContent({
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600">
                       {p.sellingPrice}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {(() => {
+                        const buy = Number(p.buyingPrice)
+                        const sell = Number(p.sellingPrice)
+                        const margin = sell - buy
+                        // Margin % is profit over revenue (matches reports)
+                        const marginPct = sell > 0 ? (margin / sell) * 100 : 0
+                        return (
+                          <span
+                            className={
+                              margin < 0
+                                ? 'text-red-600'
+                                : margin === 0
+                                  ? 'text-gray-400'
+                                  : 'text-green-600'
+                            }
+                          >
+                            {margin.toFixed(2)}
+                            {sell > 0 && (
+                              <span className="text-xs text-gray-400 ml-1">
+                                ({marginPct.toFixed(0)}%)
+                              </span>
+                            )}
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span
