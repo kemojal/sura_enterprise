@@ -69,6 +69,7 @@ export const updateShop = createServerFn({ method: 'POST' })
       loyaltyPointValue: z.string().optional(),
       dailyTarget: z.string().optional(),
       monthlyTarget: z.string().optional(),
+      lowStockAlertsEnabled: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -90,6 +91,7 @@ export const updateShop = createServerFn({ method: 'POST' })
         loyaltyPointValue: data.loyaltyPointValue ?? '0.01',
         dailyTarget: data.dailyTarget ?? '0',
         monthlyTarget: data.monthlyTarget ?? '0',
+        lowStockAlertsEnabled: data.lowStockAlertsEnabled ?? true,
       })
       .where(eq(shops.id, shopId))
       .returning()

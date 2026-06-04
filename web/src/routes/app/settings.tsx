@@ -49,6 +49,9 @@ function SettingsPage() {
   )
   const [dailyTarget, setDailyTarget] = useState(shop.dailyTarget ?? '0')
   const [monthlyTarget, setMonthlyTarget] = useState(shop.monthlyTarget ?? '0')
+  const [lowStockAlertsEnabled, setLowStockAlertsEnabled] = useState(
+    shop.lowStockAlertsEnabled ?? true,
+  )
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -68,7 +71,8 @@ function SettingsPage() {
     loyaltyEarnRate !== (shop.loyaltyEarnRate ?? '1') ||
     loyaltyPointValue !== (shop.loyaltyPointValue ?? '0.01') ||
     dailyTarget !== (shop.dailyTarget ?? '0') ||
-    monthlyTarget !== (shop.monthlyTarget ?? '0')
+    monthlyTarget !== (shop.monthlyTarget ?? '0') ||
+    lowStockAlertsEnabled !== (shop.lowStockAlertsEnabled ?? true)
 
   async function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -119,6 +123,7 @@ function SettingsPage() {
           loyaltyPointValue: loyaltyPointValue || '0.01',
           dailyTarget: dailyTarget || '0',
           monthlyTarget: monthlyTarget || '0',
+          lowStockAlertsEnabled,
         },
       })
       setSaved(true)
@@ -334,6 +339,28 @@ function SettingsPage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Low stock alerts */}
+        <div className="app-card p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-sea-ink uppercase tracking-wide">
+              Low Stock Alerts
+            </h3>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={lowStockAlertsEnabled}
+                onChange={(e) => { setLowStockAlertsEnabled(e.target.checked); setSaved(false) }}
+              />
+              Enabled
+            </label>
+          </div>
+          <p className="text-xs text-sea-ink-soft">
+            Email the shop owner a daily digest of products at or below their
+            low-stock threshold. You also get an instant alert whenever a sale
+            takes an item to its threshold.
+          </p>
         </div>
 
         {/* Receipt customization */}

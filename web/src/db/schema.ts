@@ -139,6 +139,9 @@ export const shops = pgTable('shops', {
   monthlyTarget: decimal('monthly_target', { precision: 12, scale: 2 })
     .notNull()
     .default('0'),
+  lowStockAlertsEnabled: boolean('low_stock_alerts_enabled')
+    .notNull()
+    .default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
