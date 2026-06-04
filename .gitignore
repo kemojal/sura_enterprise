@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+.output/
+.nitro/
+.tanstack/
+
+# Environment — NEVER commit secrets
+.env
+.env.local
+.env.*.local
+
+# Generated
+web/src/routeTree.gen.ts
+web/.fallow/
+web/.playwright-cli/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Drizzle migrations (optional — commit if you want migration history)
+web/drizzle/

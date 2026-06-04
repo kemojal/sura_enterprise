@@ -1,0 +1,87 @@
+import { createServerFn } from '@tanstack/react-start'
+import { getRequest } from '@tanstack/react-start/server'
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
+import { z } from 'zod'
+
+import { db } from '#/db/index'
+import { expenses, products, saleItems, sales, shops } from '#/db/schema'
+import { getShopCtxWithPermission } from './context'
+
+export const getReport = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ from: z.string(), to: z.string() }))
+  .handler(async ({ data }) => {
+    const request = getRequest()
+    const { shopId } = await getShopCtxWithPermission(request.headers, 'reports')
+
+    const [shop] = await db
+      .select({ currency: shops.currency })
+      .from(shops)
+      .where(eq(shops.id, shopId))
+      .limit(1)
+
+    const from = new Date(data.from)
+    const to = new Date(data.to)
+    to.setHours(23, 59, 59, 999)
+
+    const salesConditions = [
+      eq(sales.shopId, shopId),
+      gte(sales.createdAt, from),
+      lte(sales.createdAt, to),
+    ]
+    const expConditions = [
+      eq(expenses.shopId, shopId),
+      gte(expenses.date, from),
+      lte(expenses.date, to),
+    ]
+
+    const [salesSummary] = await db
+      .select({
+        totalRevenue: sql<string>`coalesce(sum(${sales.totalAmount}), 0)`,
+        count: sql<number>`cast(count(*) as int)`,
+      })
+      .from(sales)
+      .where(and(...salesConditions))
+
+    const [expSummary] = await db
+      .select({ total: sql<string>`coalesce(sum(${expenses.amount}), 0)` })
+      .from(expenses)
+      .where(and(...expConditions))
+
+    const topProducts = await db
+      .select({
+        productId: saleItems.productId,
+        name: products.name,
+        totalQty: sql<number>`cast(sum(${saleItems.quantity}) as int)`,
+        totalRevenue: sql<string>`sum(${saleItems.subtotal})`,
+      })
+      .from(saleItems)
+      .innerJoin(products, eq(saleItems.productId, products.id))
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
+      .where(and(...salesConditions))
+      .groupBy(saleItems.productId, products.name)
+      .orderBy(desc(sql`sum(${saleItems.quantity})`))
+      .limit(10)
+
+    const expByCategory = await db
+      .select({
+        category: expenses.category,
+        total: sql<string>`sum(${expenses.amount})`,
+      })
+      .from(expenses)
+      .where(and(...expConditions))
+      .groupBy(expenses.category)
+      .orderBy(desc(sql`sum(${expenses.amount})`))
+
+    const revenue = Number(salesSummary?.totalRevenue ?? 0)
+    const totalExpenses = Number(expSummary?.total ?? 0)
+
+    return {
+      revenue,
+      totalExpenses,
+      profit: revenue - totalExpenses,
+      salesCount: salesSummary?.count ?? 0,
+      topProducts,
+      expByCategory,
+      currency: shop?.currency ?? 'GHS',
+    }
+  })

@@ -1,0 +1,107 @@
+import { createServerFn } from '@tanstack/react-start'
+import { getRequest } from '@tanstack/react-start/server'
+import { and, desc, eq, sql } from 'drizzle-orm'
+import { z } from 'zod'
+
+import { db } from '#/db/index'
+import { products, staffMembers, stockAdjustments } from '#/db/schema'
+import { getShopCtxWithPermission } from './context'
+import { nanoid } from './nanoid'
+
+export const getProductAdjustments = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ productId: z.string() }))
+  .handler(async ({ data }) => {
+    const request = getRequest()
+    const { shopId } = await getShopCtxWithPermission(request.headers, 'products:write')
+
+    const [product] = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        stockQty: products.stockQty,
+        sellingPrice: products.sellingPrice,
+        buyingPrice: products.buyingPrice,
+      })
+      .from(products)
+      .where(and(eq(products.id, data.productId), eq(products.shopId, shopId)))
+      .limit(1)
+
+    if (!product) throw new Error('Product not found')
+
+    const adjustments = await db
+      .select({
+        id: stockAdjustments.id,
+        type: stockAdjustments.type,
+        quantity: stockAdjustments.quantity,
+        note: stockAdjustments.note,
+        createdAt: stockAdjustments.createdAt,
+        staffName: staffMembers.name,
+      })
+      .from(stockAdjustments)
+      .leftJoin(staffMembers, eq(stockAdjustments.staffId, staffMembers.id))
+      .where(
+        and(
+          eq(stockAdjustments.productId, data.productId),
+          eq(stockAdjustments.shopId, shopId),
+        ),
+      )
+      .orderBy(desc(stockAdjustments.createdAt))
+      .limit(20)
+
+    return { product, adjustments }
+  })
+
+const adjTypes = ['restock', 'write_off', 'correction', 'initial_count'] as const
+
+export const createStockAdjustment = createServerFn({ method: 'POST' })
+  .inputValidator(
+    z.object({
+      productId: z.string(),
+      type: z.enum(adjTypes),
+      quantity: z.number().int().min(1),
+      note: z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const request = getRequest()
+    const { shopId, staffId } = await getShopCtxWithPermission(
+      request.headers,
+      'products:write',
+    )
+
+    // write_off reduces stock (negative), others increase
+    const delta = data.type === 'write_off' ? -data.quantity : data.quantity
+
+    return db.transaction(async (tx) => {
+      const [product] = await tx
+        .select({ stockQty: products.stockQty })
+        .from(products)
+        .where(and(eq(products.id, data.productId), eq(products.shopId, shopId)))
+        .limit(1)
+
+      if (!product) throw new Error('Product not found')
+
+      const newQty = product.stockQty + delta
+      if (newQty < 0) throw new Error('Stock cannot go below zero')
+
+      await tx
+        .update(products)
+        .set({ stockQty: sql`${products.stockQty} + ${delta}` })
+        .where(and(eq(products.id, data.productId), eq(products.shopId, shopId)))
+
+      const [adjustment] = await tx
+        .insert(stockAdjustments)
+        .values({
+          id: nanoid(),
+          shopId,
+          productId: data.productId,
+          staffId,
+          type: data.type,
+          quantity: delta,
+          note: data.note,
+        })
+        .returning()
+
+      return { adjustment, newQty }
+    })
+  })
