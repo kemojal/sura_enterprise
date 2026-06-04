@@ -305,6 +305,16 @@ export const expenses = pgTable('expenses', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Monthly budget per expense category (one row per shop+category).
+export const expenseBudgets = pgTable('expense_budgets', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  category: expenseCategoryEnum('category').notNull(),
+  monthlyAmount: decimal('monthly_amount', { precision: 12, scale: 2 }).notNull(),
+})
+
 export const stockAdjTypeEnum = pgEnum('stock_adj_type', [
   'restock',
   'write_off',
