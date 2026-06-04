@@ -43,6 +43,18 @@ const catLabel: Record<string, string> = {
   misc: 'Miscellaneous',
 }
 
+const methodLabel: Record<string, string> = {
+  cash: 'Cash',
+  mobile_money: 'Mobile Money',
+  credit: 'Credit',
+}
+
+const methodBar: Record<string, string> = {
+  cash: 'bg-green-500',
+  mobile_money: 'bg-blue-500',
+  credit: 'bg-amber-500',
+}
+
 function ReportsPage() {
   const data = Route.useLoaderData()
   const { from, to } = Route.useSearch()
@@ -167,6 +179,52 @@ function ReportsPage() {
             </table>
           )}
         </div>
+      </div>
+
+      {/* Sales by payment method */}
+      <div className="bg-white rounded-xl border p-5 space-y-3">
+        <h3 className="font-medium text-gray-700">Sales by Payment Method</h3>
+        {data.salesByMethod.length === 0 ? (
+          <p className="text-sm text-gray-400">No sales in this period.</p>
+        ) : (
+          (() => {
+            const grand = data.salesByMethod.reduce(
+              (s, m) => s + Number(m.total),
+              0,
+            )
+            return (
+              <div className="space-y-3">
+                {data.salesByMethod.map((m) => {
+                  const pct = grand > 0 ? (Number(m.total) / grand) * 100 : 0
+                  return (
+                    <div key={m.method} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-700">
+                          {methodLabel[m.method] ?? m.method}
+                          <span className="text-gray-400 ml-1.5 text-xs">
+                            ({m.count} sale{m.count === 1 ? '' : 's'})
+                          </span>
+                        </span>
+                        <span className="font-medium text-gray-900">
+                          {fmt(Number(m.total))}
+                          <span className="text-gray-400 ml-1.5 text-xs">
+                            {pct.toFixed(0)}%
+                          </span>
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${methodBar[m.method] ?? 'bg-gray-400'}`}
+                          style={{ width: `${Math.max(pct, 1)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()
+        )}
       </div>
 
       {/* Product profitability */}

@@ -74,6 +74,17 @@ export const getReport = createServerFn({ method: 'GET' })
       .groupBy(expenses.category)
       .orderBy(desc(sql`sum(${expenses.amount})`))
 
+    const salesByMethod = await db
+      .select({
+        method: sales.paymentMethod,
+        count: sql<number>`cast(count(*) as int)`,
+        total: sql<string>`sum(${sales.totalAmount})`,
+      })
+      .from(sales)
+      .where(and(...salesConditions))
+      .groupBy(sales.paymentMethod)
+      .orderBy(desc(sql`sum(${sales.totalAmount})`))
+
     // Profitability per product: units sold × (sale price − current buying price).
     // Uses current buyingPrice as cost basis (historical cost not captured per line).
     const productProfit = await db
@@ -125,6 +136,7 @@ export const getReport = createServerFn({ method: 'GET' })
       topProducts,
       productProfit,
       expByCategory,
+      salesByMethod,
       currency: shop?.currency ?? 'GHS',
     }
   })
