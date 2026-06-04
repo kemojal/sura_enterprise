@@ -1,10 +1,7 @@
 import { useState } from 'react'
 
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
 import { createExpense } from '#/lib/expenses'
+import { FormActions, FormField, FormSelect, FormTextarea, useFormSubmit } from './field'
 
 const categories = [
   { value: 'rent', label: 'Rent' },
@@ -18,96 +15,58 @@ const categories = [
   { value: 'misc', label: 'Miscellaneous' },
 ] as const
 
+type ExpenseCategory = (typeof categories)[number]['value']
+
 interface ExpenseFormProps {
   onCancel: () => void
   onSaved: () => Promise<void> | void
 }
 
 export function ExpenseForm({ onCancel, onSaved }: ExpenseFormProps) {
-  const [category, setCategory] =
-    useState<(typeof categories)[number]['value']>('misc')
+  const [category, setCategory] = useState<ExpenseCategory>('misc')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    try {
-      await createExpense({ data: { category, amount, description, date } })
-      await onSaved()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { loading, error, handleSubmit } = useFormSubmit(async () => {
+    await createExpense({ data: { category, amount, description, date } })
+    await onSaved()
+  })
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-1">
-        <Label>Category</Label>
-        <select
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          value={category}
-          onChange={(e) =>
-            setCategory(e.target.value as (typeof categories)[number]['value'])
-          }
-        >
-          {categories.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="exp-amount">Amount *</Label>
-        <Input
-          id="exp-amount"
-          type="number"
-          step="0.01"
-          min="0"
-          required
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="exp-date">Date</Label>
-        <Input
-          id="exp-date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor="exp-desc">Description</Label>
-        <Textarea
-          id="exp-desc"
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex gap-3">
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Saving…' : 'Save expense'}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
+      <FormSelect
+        label="Category"
+        value={category}
+        onChange={(v) => setCategory(v as ExpenseCategory)}
+        options={categories.map((c) => ({ value: c.value, label: c.label }))}
+      />
+      <FormField
+        label="Amount"
+        required
+        type="number"
+        step="0.01"
+        min="0"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+      />
+      <FormField
+        label="Date"
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+      />
+      <FormTextarea
+        label="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
+      <FormActions
+        loading={loading}
+        error={error}
+        saveLabel="Save expense"
+        onCancel={onCancel}
+      />
     </form>
   )
 }
