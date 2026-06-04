@@ -68,6 +68,11 @@ export function ProductsContent({
               { header: 'Barcode', value: (p) => p.barcode ?? '' },
             ]}
           />
+          <Link to="/app/products/labels">
+            <Button size="sm" variant="outline">
+              Labels
+            </Button>
+          </Link>
           <Link to="/app/products/new">
             <Button size="sm">+ Add product</Button>
           </Link>
