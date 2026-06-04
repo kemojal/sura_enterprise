@@ -111,6 +111,7 @@ export const shops = pgTable('shops', {
   phone: text('phone'),
   currency: text('currency').notNull().default('GHS'),
   logoUrl: text('logo_url'),
+  receiptFooter: text('receipt_footer'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

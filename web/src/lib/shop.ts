@@ -60,6 +60,8 @@ export const updateShop = createServerFn({ method: 'POST' })
       address: z.string().optional(),
       phone: z.string().optional(),
       currency: z.string().min(1),
+      logoUrl: z.string().optional(),
+      receiptFooter: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -67,7 +69,14 @@ export const updateShop = createServerFn({ method: 'POST' })
     const { shopId } = await getShopCtxWithPermission(request.headers, 'settings')
     const [shop] = await db
       .update(shops)
-      .set(data)
+      .set({
+        name: data.name,
+        address: data.address,
+        phone: data.phone,
+        currency: data.currency,
+        logoUrl: data.logoUrl ?? null,
+        receiptFooter: data.receiptFooter ?? null,
+      })
       .where(eq(shops.id, shopId))
       .returning()
     return shop

@@ -81,7 +81,14 @@ export const getSaleDetail = createServerFn({ method: 'GET' })
       .where(eq(saleItems.saleId, sale.id))
 
     const [shop] = await db
-      .select({ name: shops.name, address: shops.address, phone: shops.phone, currency: shops.currency })
+      .select({
+        name: shops.name,
+        address: shops.address,
+        phone: shops.phone,
+        currency: shops.currency,
+        logoUrl: shops.logoUrl,
+        receiptFooter: shops.receiptFooter,
+      })
       .from(shops)
       .where(eq(shops.id, shopId))
       .limit(1)

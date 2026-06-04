@@ -52,3 +52,36 @@ export const getProductImageUploadUrl = createServerFn({ method: 'POST' })
 
     return { uploadUrl, objectUrl, key }
   })
+
+export const getShopLogoUploadUrl = createServerFn({ method: 'POST' })
+  .inputValidator(
+    z.object({
+      filename: z.string(),
+      contentType: z.string().startsWith('image/'),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const request = getRequest()
+    const { shopId } = await getShopCtxWithPermission(request.headers, 'settings')
+
+    const bucket = process.env.R2_BUCKET_NAME
+    const publicUrl = process.env.R2_PUBLIC_URL
+    if (!bucket || !publicUrl) {
+      throw new Error('R2_BUCKET_NAME and R2_PUBLIC_URL must be set in .env.local')
+    }
+
+    const ext = data.filename.split('.').pop()?.toLowerCase() ?? 'png'
+    const key = `logos/${shopId}/${Date.now()}.${ext}`
+
+    const client = getR2Client()
+    const cmd = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: data.contentType,
+    })
+
+    const uploadUrl = await getSignedUrl(client, cmd, { expiresIn: 300 })
+    const objectUrl = `${publicUrl.replace(/\/$/, '')}/${key}`
+
+    return { uploadUrl, objectUrl, key }
+  })

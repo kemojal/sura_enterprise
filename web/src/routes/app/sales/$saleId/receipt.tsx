@@ -63,7 +63,7 @@ function ReceiptPage() {
     if (sale.status === 'credit' && balance > 0)
       lines.push(`⚠️ Balance due: ${fmt(balance, currency)}`)
     lines.push('')
-    lines.push('Thank you for your business! 🙏')
+    lines.push(shop?.receiptFooter || 'Thank you for your business! 🙏')
 
     return lines.join('\n')
   }
@@ -127,6 +127,13 @@ function ReceiptPage() {
         >
           {/* Header */}
           <div className="text-center px-6 pt-8 pb-4 border-b border-dashed">
+            {shop?.logoUrl && (
+              <img
+                src={shop.logoUrl}
+                alt={shop.name}
+                className="h-16 mx-auto mb-2 object-contain"
+              />
+            )}
             <h1 className="text-xl font-bold text-gray-900 uppercase tracking-wide">
               {shop?.name ?? 'StoreFlow'}
             </h1>
@@ -231,7 +238,9 @@ function ReceiptPage() {
 
           {/* Footer */}
           <div className="px-6 py-6 text-center text-xs text-gray-400">
-            <p>Thank you for your business!</p>
+            <p className="whitespace-pre-line">
+              {shop?.receiptFooter || 'Thank you for your business!'}
+            </p>
             <p className="mt-1 font-mono text-gray-300">
               {sale.id.toUpperCase()}
             </p>
