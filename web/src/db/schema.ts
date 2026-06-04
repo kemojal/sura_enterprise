@@ -123,6 +123,12 @@ export const shops = pgTable('shops', {
   loyaltyPointValue: decimal('loyalty_point_value', { precision: 8, scale: 4 })
     .notNull()
     .default('0.01'),
+  dailyTarget: decimal('daily_target', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
+  monthlyTarget: decimal('monthly_target', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

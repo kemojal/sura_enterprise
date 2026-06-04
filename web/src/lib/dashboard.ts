@@ -44,10 +44,27 @@ export const getDashboardStats = createServerFn({ method: 'GET' })
     const { shopId } = await getShopCtx(request.headers)
 
     const [shop] = await db
-      .select({ currency: shops.currency })
+      .select({
+        currency: shops.currency,
+        dailyTarget: shops.dailyTarget,
+        monthlyTarget: shops.monthlyTarget,
+      })
       .from(shops)
       .where(eq(shops.id, shopId))
       .limit(1)
+
+    // Target progress: today + this month revenue, independent of the period
+    const tStart = new Date()
+    tStart.setHours(0, 0, 0, 0)
+    const tEnd = new Date()
+    tEnd.setHours(23, 59, 59, 999)
+    const mStart = new Date()
+    mStart.setDate(1)
+    mStart.setHours(0, 0, 0, 0)
+    const [todayRevenue, monthRevenue] = await Promise.all([
+      sumSales(shopId, tStart, tEnd),
+      sumSales(shopId, mStart, tEnd),
+    ])
 
     const { start: periodStart, end: periodEnd } = periodRange(data.period)
 
@@ -190,6 +207,10 @@ export const getDashboardStats = createServerFn({ method: 'GET' })
       lowStock,
       outOfStock,
       topProducts,
+      todayRevenue,
+      monthRevenue,
+      dailyTarget: Number(shop?.dailyTarget ?? 0),
+      monthlyTarget: Number(shop?.monthlyTarget ?? 0),
       currency: shop?.currency ?? 'GHS',
     }
   })

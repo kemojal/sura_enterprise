@@ -47,6 +47,8 @@ function SettingsPage() {
   const [loyaltyPointValue, setLoyaltyPointValue] = useState(
     shop.loyaltyPointValue ?? '0.01',
   )
+  const [dailyTarget, setDailyTarget] = useState(shop.dailyTarget ?? '0')
+  const [monthlyTarget, setMonthlyTarget] = useState(shop.monthlyTarget ?? '0')
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -64,7 +66,9 @@ function SettingsPage() {
     taxInclusive !== (shop.taxInclusive ?? true) ||
     loyaltyEnabled !== (shop.loyaltyEnabled ?? false) ||
     loyaltyEarnRate !== (shop.loyaltyEarnRate ?? '1') ||
-    loyaltyPointValue !== (shop.loyaltyPointValue ?? '0.01')
+    loyaltyPointValue !== (shop.loyaltyPointValue ?? '0.01') ||
+    dailyTarget !== (shop.dailyTarget ?? '0') ||
+    monthlyTarget !== (shop.monthlyTarget ?? '0')
 
   async function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -113,6 +117,8 @@ function SettingsPage() {
           loyaltyEnabled,
           loyaltyEarnRate: loyaltyEarnRate || '1',
           loyaltyPointValue: loyaltyPointValue || '0.01',
+          dailyTarget: dailyTarget || '0',
+          monthlyTarget: monthlyTarget || '0',
         },
       })
       setSaved(true)
@@ -244,6 +250,40 @@ function SettingsPage() {
                 </span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Sales targets */}
+        <div className="app-card p-6 space-y-5">
+          <h3 className="text-sm font-semibold text-sea-ink uppercase tracking-wide">
+            Sales Targets
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="s-daily">Daily revenue target ({currency})</Label>
+              <Input
+                id="s-daily"
+                type="number"
+                step="0.01"
+                min="0"
+                value={dailyTarget}
+                onChange={(e) => { setDailyTarget(e.target.value); setSaved(false) }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="s-monthly">Monthly revenue target ({currency})</Label>
+              <Input
+                id="s-monthly"
+                type="number"
+                step="0.01"
+                min="0"
+                value={monthlyTarget}
+                onChange={(e) => { setMonthlyTarget(e.target.value); setSaved(false) }}
+              />
+            </div>
+            <p className="col-span-2 text-xs text-sea-ink-soft">
+              Progress toward these shows on the dashboard. Set 0 to hide.
+            </p>
           </div>
         </div>
 
