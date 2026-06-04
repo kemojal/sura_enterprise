@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { SaleForm } from '#/components/forms/sale-form'
 import { RouteDialog } from '#/components/route-dialog'
 import { listCustomers } from '#/lib/customers'
+import { listHeldSales } from '#/lib/held-sales'
 import { listProducts } from '#/lib/products'
 import { getSaleConfig, listSales } from '#/lib/sales'
 import { SalesContent } from './index'
@@ -15,19 +16,20 @@ export const Route = createFileRoute('/app/sales/new')({
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
-    const [sales, products, customers, config] = await Promise.all([
+    const [sales, products, customers, config, held] = await Promise.all([
       listSales({ data: deps }),
       listProducts({ data: {} }),
       listCustomers({ data: {} }),
       getSaleConfig(),
+      listHeldSales(),
     ])
-    return { sales, products, customers, config }
+    return { sales, products, customers, config, held }
   },
   component: NewSalePage,
 })
 
 function NewSalePage() {
-  const { sales, products, customers, config } = Route.useLoaderData()
+  const { sales, products, customers, config, held } = Route.useLoaderData()
   const { from, to } = Route.useSearch()
   const navigate = Route.useNavigate()
   const router = useRouter()
@@ -50,6 +52,8 @@ function NewSalePage() {
           taxRate={config.taxRate}
           taxInclusive={config.taxInclusive}
           currency={config.currency}
+          heldSales={held}
+          onHeldChanged={() => router.invalidate()}
           onCancel={close}
           onSaved={(saleId) =>
             router.navigate({

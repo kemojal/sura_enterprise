@@ -542,9 +542,14 @@ export function SaleForm({
           <Button
             type="button"
             variant="outline"
-            className="flex-1"
-            onClick={onCancel}
+            onClick={handleHold}
+            disabled={loading || cart.length === 0}
+            title="Hold this sale to finish later"
           >
+            <PauseCircle size={15} className="mr-1" />
+            Hold
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
         </div>
