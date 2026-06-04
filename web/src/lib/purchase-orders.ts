@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { db } from '#/db/index'
 import {
+  categories,
   products,
   purchaseOrderItems,
   purchaseOrders,
@@ -13,6 +14,42 @@ import {
 import { logActivity } from './activity'
 import { getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
+
+// Products at or below their low-stock threshold, with a suggested reorder
+// quantity that tops stock up to 2× the threshold.
+export const getReorderSuggestions = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const request = getRequest()
+    const { shopId } = await getShopCtxWithPermission(request.headers, 'purchase_orders')
+    const rows = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        stockQty: products.stockQty,
+        lowStockThreshold: products.lowStockThreshold,
+        buyingPrice: products.buyingPrice,
+        supplierId: products.supplierId,
+        supplierName: suppliers.name,
+        categoryName: categories.name,
+      })
+      .from(products)
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(
+        and(
+          eq(products.shopId, shopId),
+          eq(products.isActive, true),
+          sql`${products.stockQty} <= ${products.lowStockThreshold}`,
+        ),
+      )
+      .orderBy(products.stockQty)
+
+    return rows.map((p) => ({
+      ...p,
+      suggestedQty: Math.max(p.lowStockThreshold * 2 - p.stockQty, 1),
+    }))
+  },
+)
 
 export const listPurchaseOrders = createServerFn({ method: 'GET' }).handler(
   async () => {

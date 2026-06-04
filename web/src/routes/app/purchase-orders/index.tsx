@@ -26,9 +26,16 @@ function PurchaseOrdersPage() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">Purchase Orders</h2>
-        <Link to="/app/purchase-orders/new">
-          <Button size="sm">+ New order</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/app/purchase-orders/reorder">
+            <Button size="sm" variant="outline">
+              Reorder low stock
+            </Button>
+          </Link>
+          <Link to="/app/purchase-orders/new">
+            <Button size="sm">+ New order</Button>
+          </Link>
+        </div>
       </div>
 
       {orders.length === 0 ? (
