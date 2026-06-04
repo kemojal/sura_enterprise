@@ -14,7 +14,8 @@ export const Route = createFileRoute('/app/customers/$customerId')({
 })
 
 function CustomerDetailPage() {
-  const { customer, sales, payments, totalDebt } = Route.useLoaderData()
+  const { customer, sales, payments, totalDebt, insights, topProducts } =
+    Route.useLoaderData()
   const router = useRouter()
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
@@ -22,6 +23,13 @@ function CustomerDetailPage() {
   const [error, setError] = useState('')
 
   const { shop } = Route.useRouteContext()
+  const insightsCurrency = shop?.currency ?? 'GHS'
+  const money = (n: number) =>
+    new Intl.NumberFormat('en-GH', {
+      style: 'currency',
+      currency: insightsCurrency,
+      maximumFractionDigits: 2,
+    }).format(n)
 
   function sendDebtReminder() {
     const currency = shop?.currency ?? 'GHS'
@@ -79,21 +87,71 @@ function CustomerDetailPage() {
     <div className="p-6 max-w-4xl mx-auto space-y-8">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">
             {customer.name}
           </h2>
-          <div className="text-sm text-gray-500 mt-1 space-x-4">
+          <div className="text-sm text-sea-ink-soft mt-1 space-x-4">
             {customer.phone && <span>{customer.phone}</span>}
             {customer.email && <span>{customer.email}</span>}
           </div>
         </div>
         <Link
           to="/app/customers"
-          className="text-sm text-gray-500 hover:text-gray-900"
+          className="text-sm text-sea-ink-soft hover:text-sea-ink"
         >
           ← Back
         </Link>
       </div>
+
+      {/* Purchase insights */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[
+          { label: 'Total spent', value: money(insights.totalSpent) },
+          { label: 'Visits', value: String(insights.visitCount) },
+          { label: 'Avg basket', value: money(insights.avgBasket) },
+          {
+            label: 'Last seen',
+            value: insights.lastSeen
+              ? new Date(insights.lastSeen).toLocaleDateString('en-GH', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : '—',
+          },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-xl border p-4">
+            <p className="text-xs text-gray-500">{s.label}</p>
+            <p className="text-lg font-bold text-gray-900 mt-1">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {topProducts.length > 0 && (
+        <div className="bg-white rounded-xl border p-5 space-y-3">
+          <h3 className="font-medium text-gray-700">Most Bought</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-gray-400 text-left">
+                <th className="pb-2 font-normal">Product</th>
+                <th className="pb-2 font-normal text-right">Units</th>
+                <th className="pb-2 font-normal text-right">Spent</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {topProducts.map((p, i) => (
+                <tr key={p.name ?? i}>
+                  <td className="py-2 text-gray-700">{p.name}</td>
+                  <td className="py-2 text-right text-gray-600">{p.units}</td>
+                  <td className="py-2 text-right font-medium text-gray-900">
+                    {money(Number(p.spent))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {totalDebt > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-5 space-y-4">
@@ -103,7 +161,7 @@ function CustomerDetailPage() {
             </p>
             <button
               onClick={sendDebtReminder}
-              className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-xs font-medium text-palm bg-palm/12 hover:bg-palm/20 px-3 py-1.5 rounded-lg transition-colors"
             >
               <MessageCircle size={14} />
               Send reminder
@@ -147,33 +205,33 @@ function CustomerDetailPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-700">Purchase History</h3>
+          <h3 className="font-semibold text-sea-ink">Purchase History</h3>
           {sales.length === 0 ? (
-            <p className="text-sm text-gray-400">No purchases.</p>
+            <p className="text-sm text-sea-ink-soft">No purchases.</p>
           ) : (
-            <div className="bg-white rounded-xl border divide-y text-sm">
+            <div className="app-card divide-y divide-line text-sm">
               {sales.map((s) => (
                 <div
                   key={s.id}
                   className="px-4 py-3 flex items-center justify-between"
                 >
                   <div>
-                    <p className="text-gray-700">
+                    <p className="text-sea-ink">
                       {new Date(s.createdAt).toLocaleDateString()}
                     </p>
                     <span
                       className={`text-xs px-1.5 py-0.5 rounded-full ${
                         s.status === 'credit'
                           ? 'bg-amber-100 text-amber-700'
-                          : 'bg-green-100 text-green-700'
+                          : 'bg-palm/12 text-palm'
                       }`}
                     >
                       {s.status}
                     </span>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-gray-900">{s.totalAmount}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-medium text-sea-ink">{s.totalAmount}</p>
+                    <p className="text-xs text-sea-ink-soft">
                       Paid: {s.amountPaid}
                     </p>
                   </div>
@@ -184,25 +242,25 @@ function CustomerDetailPage() {
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-medium text-gray-700">Payment History</h3>
+          <h3 className="font-semibold text-sea-ink">Payment History</h3>
           {payments.length === 0 ? (
-            <p className="text-sm text-gray-400">No payments.</p>
+            <p className="text-sm text-sea-ink-soft">No payments.</p>
           ) : (
-            <div className="bg-white rounded-xl border divide-y text-sm">
+            <div className="app-card divide-y divide-line text-sm">
               {payments.map((p) => (
                 <div
                   key={p.id}
                   className="px-4 py-3 flex items-center justify-between"
                 >
                   <div>
-                    <p className="text-gray-700">
+                    <p className="text-sea-ink">
                       {new Date(p.createdAt).toLocaleDateString()}
                     </p>
                     {p.note && (
-                      <p className="text-xs text-gray-400">{p.note}</p>
+                      <p className="text-xs text-sea-ink-soft">{p.note}</p>
                     )}
                   </div>
-                  <p className="font-medium text-green-700">{p.amount}</p>
+                  <p className="font-medium text-palm">{p.amount}</p>
                 </div>
               ))}
             </div>

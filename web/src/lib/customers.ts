@@ -4,7 +4,7 @@ import { and, eq, ilike, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { customerPayments, customers, sales } from '#/db/schema'
+import { customerPayments, customers, products, saleItems, sales } from '#/db/schema'
 import { logActivity } from './activity'
 import { getShopCtx, getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
@@ -64,7 +64,48 @@ export const getCustomer = createServerFn({ method: 'GET' })
       .filter((s) => s.status === 'credit')
       .reduce((sum, s) => sum + Number(s.totalAmount) - Number(s.amountPaid), 0)
 
-    return { customer, sales: customerSales, payments, totalDebt }
+    // Aggregate spend over ALL of this customer's sales (not just the last 50)
+    const [agg] = await db
+      .select({
+        totalSpent: sql<string>`coalesce(sum(${sales.totalAmount}), 0)`,
+        visitCount: sql<number>`cast(count(*) as int)`,
+        lastSeen: sql<string | null>`max(${sales.createdAt})`,
+      })
+      .from(sales)
+      .where(eq(sales.customerId, customer.id))
+
+    const visitCount = agg?.visitCount ?? 0
+    const totalSpent = Number(agg?.totalSpent ?? 0)
+    const insights = {
+      totalSpent,
+      visitCount,
+      avgBasket: visitCount > 0 ? totalSpent / visitCount : 0,
+      lastSeen: agg?.lastSeen ?? null,
+    }
+
+    // Top products this customer buys, by units
+    const topProducts = await db
+      .select({
+        name: products.name,
+        units: sql<number>`cast(sum(${saleItems.quantity}) as int)`,
+        spent: sql<string>`sum(${saleItems.subtotal})`,
+      })
+      .from(saleItems)
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
+      .innerJoin(products, eq(saleItems.productId, products.id))
+      .where(eq(sales.customerId, customer.id))
+      .groupBy(products.name)
+      .orderBy(sql`sum(${saleItems.quantity}) desc`)
+      .limit(5)
+
+    return {
+      customer,
+      sales: customerSales,
+      payments,
+      totalDebt,
+      insights,
+      topProducts,
+    }
   })
 
 export const createCustomer = createServerFn({ method: 'POST' })
