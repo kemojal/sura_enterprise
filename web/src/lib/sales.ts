@@ -109,6 +109,9 @@ export const getSaleConfig = createServerFn({ method: 'GET' }).handler(async () 
       currency: shops.currency,
       taxRate: shops.taxRate,
       taxInclusive: shops.taxInclusive,
+      loyaltyEnabled: shops.loyaltyEnabled,
+      loyaltyEarnRate: shops.loyaltyEarnRate,
+      loyaltyPointValue: shops.loyaltyPointValue,
     })
     .from(shops)
     .where(eq(shops.id, shopId))
@@ -117,6 +120,9 @@ export const getSaleConfig = createServerFn({ method: 'GET' }).handler(async () 
     currency: shop?.currency ?? 'GHS',
     taxRate: Number(shop?.taxRate ?? 0),
     taxInclusive: shop?.taxInclusive ?? true,
+    loyaltyEnabled: shop?.loyaltyEnabled ?? false,
+    loyaltyEarnRate: Number(shop?.loyaltyEarnRate ?? 0),
+    loyaltyPointValue: Number(shop?.loyaltyPointValue ?? 0),
   }
 })
 
@@ -135,6 +141,7 @@ export const createSale = createServerFn({ method: 'POST' })
       paymentMethod: z.enum(['cash', 'credit', 'mobile_money']),
       discountType: z.enum(['amount', 'percent']).optional(),
       discountValue: z.string().optional(),
+      pointsToRedeem: z.number().int().min(0).optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -142,20 +149,27 @@ export const createSale = createServerFn({ method: 'POST' })
     const ctx = await getShopCtx(request.headers)
     const { shopId, userId } = ctx
 
-    // Tax config from the shop
-    const [shopTax] = await db
-      .select({ taxRate: shops.taxRate, taxInclusive: shops.taxInclusive })
+    // Tax + loyalty config from the shop
+    const [shopCfg] = await db
+      .select({
+        taxRate: shops.taxRate,
+        taxInclusive: shops.taxInclusive,
+        loyaltyEnabled: shops.loyaltyEnabled,
+        loyaltyEarnRate: shops.loyaltyEarnRate,
+        loyaltyPointValue: shops.loyaltyPointValue,
+      })
       .from(shops)
       .where(eq(shops.id, shopId))
       .limit(1)
-    const rate = Number(shopTax?.taxRate ?? 0)
+    const rate = Number(shopCfg?.taxRate ?? 0)
+    const loyaltyOn = !!shopCfg?.loyaltyEnabled
 
     const lineTotal = data.items.reduce(
       (sum, item) => sum + Number(item.unitPrice) * item.quantity,
       0,
     )
 
-    // Discount applies to the line total before tax. Clamp to [0, lineTotal].
+    // Manual discount applies to the line total before tax. Clamp to [0, lineTotal].
     let discountAmountNum = 0
     if (data.discountType && data.discountValue) {
       const v = Number(data.discountValue)
@@ -165,14 +179,35 @@ export const createSale = createServerFn({ method: 'POST' })
       }
     }
     discountAmountNum = Math.min(Math.max(discountAmountNum, 0), lineTotal)
-    const discountedLine = lineTotal - discountAmountNum
+
+    // Points redemption: each point is worth loyaltyPointValue, applied as an
+    // extra discount before tax. Capped at the customer's balance and the
+    // remaining line value.
+    let pointsRedeemed = 0
+    let pointsRedeemValue = 0
+    if (loyaltyOn && data.customerId && data.pointsToRedeem && data.pointsToRedeem > 0) {
+      const [cust] = await db
+        .select({ balance: customers.loyaltyPoints })
+        .from(customers)
+        .where(and(eq(customers.id, data.customerId), eq(customers.shopId, shopId)))
+        .limit(1)
+      const balance = cust?.balance ?? 0
+      const pointValue = Number(shopCfg?.loyaltyPointValue ?? 0)
+      const remaining = lineTotal - discountAmountNum
+      const maxByValue = pointValue > 0 ? Math.floor(remaining / pointValue) : 0
+      pointsRedeemed = Math.max(0, Math.min(data.pointsToRedeem, balance, maxByValue))
+      pointsRedeemValue = pointsRedeemed * pointValue
+    }
+
+    const totalDiscount = discountAmountNum + pointsRedeemValue
+    const discountedLine = lineTotal - totalDiscount
 
     // Inclusive: line prices already contain tax; tax is the embedded portion.
     // Exclusive: tax is added on top of the (discounted) line total.
     let totalAmountNum = discountedLine
     let taxAmountNum = 0
     if (rate > 0) {
-      if (shopTax?.taxInclusive) {
+      if (shopCfg?.taxInclusive) {
         taxAmountNum = discountedLine * (rate / (100 + rate))
         totalAmountNum = discountedLine
       } else {
@@ -182,7 +217,14 @@ export const createSale = createServerFn({ method: 'POST' })
     }
     const totalAmount = totalAmountNum.toFixed(2)
     const taxAmount = taxAmountNum.toFixed(2)
-    const discountAmount = discountAmountNum.toFixed(2)
+    // Record total discount (manual + points value) on the sale
+    const discountAmount = totalDiscount.toFixed(2)
+
+    // Points earned on the final payable total
+    const pointsEarned =
+      loyaltyOn && data.customerId
+        ? Math.floor(totalAmountNum * Number(shopCfg?.loyaltyEarnRate ?? 0))
+        : 0
 
     const amountPaid = Number(data.amountPaid).toFixed(2)
     const status = Number(amountPaid) < Number(totalAmount) ? 'credit' : 'completed'
@@ -220,6 +262,8 @@ export const createSale = createServerFn({ method: 'POST' })
           totalAmount,
           taxAmount,
           discountAmount,
+          pointsEarned,
+          pointsRedeemed,
           amountPaid,
           paymentMethod: data.paymentMethod,
           status,
@@ -240,6 +284,16 @@ export const createSale = createServerFn({ method: 'POST' })
           .update(products)
           .set({ stockQty: sql`${products.stockQty} - ${item.quantity}` })
           .where(eq(products.id, item.productId))
+      }
+
+      // Update customer loyalty balance: subtract redeemed, add earned
+      if (data.customerId && (pointsEarned > 0 || pointsRedeemed > 0)) {
+        await tx
+          .update(customers)
+          .set({
+            loyaltyPoints: sql`${customers.loyaltyPoints} - ${pointsRedeemed} + ${pointsEarned}`,
+          })
+          .where(eq(customers.id, data.customerId))
       }
 
       await logActivity(tx, {

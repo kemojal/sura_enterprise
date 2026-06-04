@@ -22,6 +22,7 @@ export const listCustomers = createServerFn({ method: 'GET' })
         name: customers.name,
         phone: customers.phone,
         email: customers.email,
+        loyaltyPoints: customers.loyaltyPoints,
         totalDebt: sql<string>`coalesce(sum(${sales.totalAmount} - ${sales.amountPaid}), 0)`,
       })
       .from(customers)
@@ -30,7 +31,13 @@ export const listCustomers = createServerFn({ method: 'GET' })
         and(eq(sales.customerId, customers.id), eq(sales.status, 'credit')),
       )
       .where(and(...conditions))
-      .groupBy(customers.id, customers.name, customers.phone, customers.email)
+      .groupBy(
+        customers.id,
+        customers.name,
+        customers.phone,
+        customers.email,
+        customers.loyaltyPoints,
+      )
       .orderBy(customers.name)
   })
 

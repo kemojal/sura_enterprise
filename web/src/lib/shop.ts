@@ -64,6 +64,9 @@ export const updateShop = createServerFn({ method: 'POST' })
       receiptFooter: z.string().optional(),
       taxRate: z.string().optional(),
       taxInclusive: z.boolean().optional(),
+      loyaltyEnabled: z.boolean().optional(),
+      loyaltyEarnRate: z.string().optional(),
+      loyaltyPointValue: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -80,6 +83,9 @@ export const updateShop = createServerFn({ method: 'POST' })
         receiptFooter: data.receiptFooter ?? null,
         taxRate: data.taxRate ?? '0',
         taxInclusive: data.taxInclusive ?? true,
+        loyaltyEnabled: data.loyaltyEnabled ?? false,
+        loyaltyEarnRate: data.loyaltyEarnRate ?? '1',
+        loyaltyPointValue: data.loyaltyPointValue ?? '0.01',
       })
       .where(eq(shops.id, shopId))
       .returning()

@@ -52,6 +52,8 @@ function NewSalePage() {
           taxRate={config.taxRate}
           taxInclusive={config.taxInclusive}
           currency={config.currency}
+          loyaltyEnabled={config.loyaltyEnabled}
+          loyaltyPointValue={config.loyaltyPointValue}
           heldSales={held}
           onHeldChanged={() => router.invalidate()}
           onCancel={close}

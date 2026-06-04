@@ -114,6 +114,15 @@ export const shops = pgTable('shops', {
   receiptFooter: text('receipt_footer'),
   taxRate: decimal('tax_rate', { precision: 5, scale: 2 }).notNull().default('0'),
   taxInclusive: boolean('tax_inclusive').notNull().default(true),
+  loyaltyEnabled: boolean('loyalty_enabled').notNull().default(false),
+  // Points earned per 1 unit of currency spent
+  loyaltyEarnRate: decimal('loyalty_earn_rate', { precision: 8, scale: 4 })
+    .notNull()
+    .default('1'),
+  // Currency value of 1 point when redeemed
+  loyaltyPointValue: decimal('loyalty_point_value', { precision: 8, scale: 4 })
+    .notNull()
+    .default('0.01'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -184,6 +193,7 @@ export const customers = pgTable('customers', {
   phone: text('phone'),
   email: text('email'),
   notes: text('notes'),
+  loyaltyPoints: integer('loyalty_points').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -205,6 +215,8 @@ export const sales = pgTable('sales', {
   discountAmount: decimal('discount_amount', { precision: 12, scale: 2 })
     .notNull()
     .default('0'),
+  pointsEarned: integer('points_earned').notNull().default(0),
+  pointsRedeemed: integer('points_redeemed').notNull().default(0),
   amountPaid: decimal('amount_paid', { precision: 12, scale: 2 }).notNull(),
   paymentMethod: paymentMethodEnum('payment_method').notNull().default('cash'),
   status: saleStatusEnum('status').notNull().default('completed'),

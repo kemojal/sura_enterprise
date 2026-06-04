@@ -25,10 +25,13 @@ interface SaleFormProps {
   customers: {
     id: string
     name: string
+    loyaltyPoints?: number
   }[]
   taxRate?: number
   taxInclusive?: boolean
   currency?: string
+  loyaltyEnabled?: boolean
+  loyaltyPointValue?: number
   heldSales?: {
     id: string
     label: string | null
@@ -54,6 +57,8 @@ export function SaleForm({
   taxRate = 0,
   taxInclusive = true,
   currency = 'GHS',
+  loyaltyEnabled = false,
+  loyaltyPointValue = 0,
   heldSales = [],
   onHeldChanged,
   onCancel,
@@ -68,6 +73,7 @@ export function SaleForm({
   const [amountPaid, setAmountPaid] = useState('')
   const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount')
   const [discountValue, setDiscountValue] = useState('')
+  const [pointsToRedeem, setPointsToRedeem] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<
     'cash' | 'credit' | 'mobile_money'
   >('cash')
@@ -131,7 +137,21 @@ export function SaleForm({
         : Number(discountValue)
       : 0
   const discount = Math.min(Math.max(discountRaw, 0), lineTotal)
-  const discountedLine = lineTotal - discount
+
+  // Loyalty: redeemed points reduce the bill by pointValue each, before tax
+  const selectedCustomer = customers.find((c) => c.id === customerId)
+  const customerPoints = selectedCustomer?.loyaltyPoints ?? 0
+  const loyaltyAvailable = loyaltyEnabled && !!customerId && loyaltyPointValue > 0
+  const afterDiscount = lineTotal - discount
+  const maxRedeemable = loyaltyAvailable
+    ? Math.min(customerPoints, Math.floor(afterDiscount / loyaltyPointValue))
+    : 0
+  const redeemPts = loyaltyAvailable
+    ? Math.min(Math.max(parseInt(pointsToRedeem || '0', 10) || 0, 0), maxRedeemable)
+    : 0
+  const redeemValue = redeemPts * loyaltyPointValue
+
+  const discountedLine = lineTotal - discount - redeemValue
   // Inclusive: tax embedded in discountedLine; Exclusive: added on top.
   const taxAmount =
     taxRate > 0
@@ -194,6 +214,7 @@ export function SaleForm({
           paymentMethod,
           discountType,
           discountValue: discountValue || undefined,
+          pointsToRedeem: redeemPts > 0 ? redeemPts : undefined,
         },
       })
       await onSaved(sale.id)
@@ -458,8 +479,29 @@ export function SaleForm({
             </div>
           </div>
 
+          {/* Loyalty redemption */}
+          {loyaltyAvailable && customerPoints > 0 && (
+            <div className="border-t pt-2 flex items-center gap-2">
+              <span className="text-xs text-gray-500 flex-1">
+                Redeem points{' '}
+                <span className="text-gray-400">
+                  ({customerPoints} available)
+                </span>
+              </span>
+              <input
+                type="number"
+                min="0"
+                max={maxRedeemable}
+                value={pointsToRedeem}
+                onChange={(e) => setPointsToRedeem(e.target.value)}
+                placeholder="0"
+                className="w-20 border rounded px-2 py-1 text-sm text-right"
+              />
+            </div>
+          )}
+
           <div className="border-t pt-2 space-y-1">
-            {(taxRate > 0 || discount > 0) && (
+            {(taxRate > 0 || discount > 0 || redeemValue > 0) && (
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Subtotal</span>
                 <span>{lineTotal.toFixed(2)}</span>
@@ -469,6 +511,12 @@ export function SaleForm({
               <div className="flex justify-between text-xs text-green-600">
                 <span>Discount</span>
                 <span>−{discount.toFixed(2)}</span>
+              </div>
+            )}
+            {redeemValue > 0 && (
+              <div className="flex justify-between text-xs text-purple-600">
+                <span>Points ({redeemPts})</span>
+                <span>−{redeemValue.toFixed(2)}</span>
               </div>
             )}
             {taxRate > 0 && (
