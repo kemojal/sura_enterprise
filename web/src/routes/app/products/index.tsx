@@ -95,6 +95,11 @@ export function ProductsContent({
               { header: 'Barcode', value: (p) => p.barcode ?? '' },
             ]}
           />
+          <Link to="/app/products/import">
+            <Button size="sm" variant="outline">
+              Import
+            </Button>
+          </Link>
           <Link to="/app/products/labels">
             <Button size="sm" variant="outline">
               Labels

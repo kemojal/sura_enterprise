@@ -1,6 +1,63 @@
 type CsvValue = string | number | null | undefined
 
 /**
+ * Parse CSV text into an array of row objects keyed by header.
+ * Handles quoted fields, escaped quotes (""), and commas/newlines inside quotes.
+ */
+export function parseCsv(text: string): Record<string, string>[] {
+  // Strip UTF-8 BOM if present
+  const clean = text.replace(/^﻿/, '')
+  const rows: string[][] = []
+  let field = ''
+  let row: string[] = []
+  let inQuotes = false
+
+  for (let i = 0; i < clean.length; i++) {
+    const c = clean[i]
+    if (inQuotes) {
+      if (c === '"') {
+        if (clean[i + 1] === '"') {
+          field += '"'
+          i++
+        } else {
+          inQuotes = false
+        }
+      } else {
+        field += c
+      }
+    } else if (c === '"') {
+      inQuotes = true
+    } else if (c === ',') {
+      row.push(field)
+      field = ''
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && clean[i + 1] === '\n') i++
+      row.push(field)
+      field = ''
+      if (row.some((f) => f.length > 0)) rows.push(row)
+      row = []
+    } else {
+      field += c
+    }
+  }
+  // Trailing field/row
+  if (field.length > 0 || row.length > 0) {
+    row.push(field)
+    if (row.some((f) => f.length > 0)) rows.push(row)
+  }
+
+  if (rows.length === 0) return []
+  const headers = rows[0].map((h) => h.trim())
+  return rows.slice(1).map((r) => {
+    const obj: Record<string, string> = {}
+    headers.forEach((h, idx) => {
+      obj[h] = (r[idx] ?? '').trim()
+    })
+    return obj
+  })
+}
+
+/**
  * Convert an array of objects to CSV text.
  * columns: ordered list of [header, accessor] pairs.
  */

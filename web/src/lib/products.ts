@@ -157,3 +157,97 @@ export const deleteProduct = createServerFn({ method: 'POST' })
       description: `Deleted product ${removed?.name ?? ''}`.trim(),
     })
   })
+
+const importRowSchema = z.object({
+  name: z.string().min(1),
+  categoryName: z.string().optional(),
+  buyingPrice: z.string(),
+  sellingPrice: z.string(),
+  stockQty: z.number().int().min(0),
+  lowStockThreshold: z.number().int().min(0),
+  barcode: z.string().optional(),
+})
+
+export const bulkImportProducts = createServerFn({ method: 'POST' })
+  .inputValidator(z.object({ rows: z.array(importRowSchema).min(1).max(1000) }))
+  .handler(async ({ data }) => {
+    const request = getRequest()
+    const ctx = await getShopCtxWithPermission(request.headers, 'products:write')
+    const { shopId } = ctx
+
+    // Existing products (by lowercased name) for upsert
+    const existing = await db
+      .select({ id: products.id, name: products.name })
+      .from(products)
+      .where(eq(products.shopId, shopId))
+    const byName = new Map(existing.map((p) => [p.name.toLowerCase(), p.id]))
+
+    // Existing categories (by lowercased name); create missing ones
+    const existingCats = await db
+      .select({ id: categories.id, name: categories.name })
+      .from(categories)
+      .where(eq(categories.shopId, shopId))
+    const catByName = new Map(existingCats.map((c) => [c.name.toLowerCase(), c.id]))
+
+    let created = 0
+    let updated = 0
+
+    for (const row of data.rows) {
+      let categoryId: string | undefined
+      if (row.categoryName) {
+        const key = row.categoryName.toLowerCase()
+        categoryId = catByName.get(key)
+        if (!categoryId) {
+          categoryId = nanoid()
+          await db
+            .insert(categories)
+            .values({ id: categoryId, shopId, name: row.categoryName })
+          catByName.set(key, categoryId)
+        }
+      }
+
+      const existingId = byName.get(row.name.toLowerCase())
+      if (existingId) {
+        await db
+          .update(products)
+          .set({
+            categoryId,
+            buyingPrice: row.buyingPrice,
+            sellingPrice: row.sellingPrice,
+            stockQty: row.stockQty,
+            lowStockThreshold: row.lowStockThreshold,
+            barcode: row.barcode || undefined,
+            isActive: true,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(products.id, existingId), eq(products.shopId, shopId)))
+        updated++
+      } else {
+        const id = nanoid()
+        await db.insert(products).values({
+          id,
+          shopId,
+          name: row.name,
+          categoryId,
+          buyingPrice: row.buyingPrice,
+          sellingPrice: row.sellingPrice,
+          stockQty: row.stockQty,
+          lowStockThreshold: row.lowStockThreshold,
+          barcode: row.barcode || undefined,
+        })
+        byName.set(row.name.toLowerCase(), id)
+        created++
+      }
+    }
+
+    await logActivity(db, {
+      shopId,
+      staffId: ctx.staffId,
+      actorName: ctx.userName,
+      action: 'products.imported',
+      entityType: 'product',
+      description: `Imported products via CSV — ${created} created, ${updated} updated`,
+    })
+
+    return { created, updated }
+  })
