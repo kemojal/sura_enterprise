@@ -93,6 +93,12 @@ export const expenseCategoryEnum = pgEnum('expense_category', [
   'misc',
 ])
 
+export const poStatusEnum = pgEnum('po_status', [
+  'ordered',
+  'received',
+  'cancelled',
+])
+
 // ─── App tables ───────────────────────────────────────────────────────────────
 
 export const shops = pgTable('shops', {
@@ -289,4 +295,38 @@ export const customerPayments = pgTable('customer_payments', {
   amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
   note: text('note'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const purchaseOrders = pgTable('purchase_orders', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  supplierId: text('supplier_id').references(() => suppliers.id, {
+    onDelete: 'set null',
+  }),
+  staffId: text('staff_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  status: poStatusEnum('status').notNull().default('ordered'),
+  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+  amountPaid: decimal('amount_paid', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
+  notes: text('notes'),
+  receivedAt: timestamp('received_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const purchaseOrderItems = pgTable('purchase_order_items', {
+  id: text('id').primaryKey(),
+  poId: text('po_id')
+    .notNull()
+    .references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+  productId: text('product_id').references(() => products.id, {
+    onDelete: 'set null',
+  }),
+  quantity: integer('quantity').notNull(),
+  unitCost: decimal('unit_cost', { precision: 12, scale: 2 }).notNull(),
+  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
 })

@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 import {
   BarChart3,
+  ClipboardList,
   LayoutDashboard,
   Package,
   Receipt,
@@ -69,6 +70,12 @@ const navItems = [
     label: 'Suppliers',
     icon: Receipt,
     resource: 'suppliers',
+  },
+  {
+    to: '/app/purchase-orders',
+    label: 'Purchase Orders',
+    icon: ClipboardList,
+    resource: 'purchase_orders',
   },
   {
     to: '/app/reports',

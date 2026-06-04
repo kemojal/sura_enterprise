@@ -9,6 +9,7 @@ export type Resource =
   | 'customers'
   | 'customers:write'
   | 'suppliers'
+  | 'purchase_orders'
   | 'reports'
   | 'dashboard'
   | 'settings'
@@ -23,6 +24,7 @@ const matrix: Record<Resource, StaffRole[]> = {
   customers: ['owner', 'manager', 'cashier'],
   'customers:write': ['owner', 'manager'],
   suppliers: ['owner', 'manager'],
+  purchase_orders: ['owner', 'manager'],
   reports: ['owner', 'manager'],
   settings: ['owner'],
 }
