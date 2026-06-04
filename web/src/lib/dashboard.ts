@@ -3,7 +3,7 @@ import { getRequest } from '@tanstack/react-start/server'
 import { and, desc, eq, gte, lte, sql, sum } from 'drizzle-orm'
 
 import { db } from '#/db/index'
-import { expenses, products, saleItems, sales, shops } from '#/db/schema'
+import { expenses, products, saleItems, saleReturns, sales, shops } from '#/db/schema'
 import { getShopCtx } from './context'
 
 export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
@@ -44,7 +44,18 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
         ),
       )
 
-    const todaySales = Number(todaySalesRow?.total ?? 0)
+    const [todayRefundsRow] = await db
+      .select({ total: sum(saleReturns.refundAmount) })
+      .from(saleReturns)
+      .where(
+        and(
+          eq(saleReturns.shopId, shopId),
+          gte(saleReturns.createdAt, todayStart),
+          lte(saleReturns.createdAt, todayEnd),
+        ),
+      )
+
+    const todaySales = Number(todaySalesRow?.total ?? 0) - Number(todayRefundsRow?.total ?? 0)
     const todayExpenses = Number(todayExpensesRow?.total ?? 0)
 
     // Yesterday's sales for delta comparison

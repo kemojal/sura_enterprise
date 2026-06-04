@@ -4,7 +4,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { expenses, products, saleItems, sales, shops } from '#/db/schema'
+import { expenses, products, saleItems, saleReturns, sales, shops } from '#/db/schema'
 import { getShopCtxWithPermission } from './context'
 
 export const getReport = createServerFn({ method: 'GET' })
@@ -72,11 +72,25 @@ export const getReport = createServerFn({ method: 'GET' })
       .groupBy(expenses.category)
       .orderBy(desc(sql`sum(${expenses.amount})`))
 
-    const revenue = Number(salesSummary?.totalRevenue ?? 0)
+    const [refundsSummary] = await db
+      .select({ total: sql<string>`coalesce(sum(${saleReturns.refundAmount}), 0)` })
+      .from(saleReturns)
+      .where(
+        and(
+          eq(saleReturns.shopId, shopId),
+          gte(saleReturns.createdAt, from),
+          lte(saleReturns.createdAt, to),
+        ),
+      )
+
+    const grossRevenue = Number(salesSummary?.totalRevenue ?? 0)
+    const refunds = Number(refundsSummary?.total ?? 0)
+    const revenue = grossRevenue - refunds
     const totalExpenses = Number(expSummary?.total ?? 0)
 
     return {
       revenue,
+      refunds,
       totalExpenses,
       profit: revenue - totalExpenses,
       salesCount: salesSummary?.count ?? 0,

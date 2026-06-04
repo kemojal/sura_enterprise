@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Printer, ArrowLeft, MessageCircle } from 'lucide-react'
+import { Printer, ArrowLeft, MessageCircle, Undo2 } from 'lucide-react'
 
+import { can } from '#/lib/permissions'
 import { getSaleDetail } from '#/lib/sales'
 
 export const Route = createFileRoute('/app/sales/$saleId/receipt')({
@@ -24,7 +25,11 @@ function fmt(amount: string | number, currency: string) {
 
 function ReceiptPage() {
   const { sale, items, shop } = Route.useLoaderData()
+  const { saleId } = Route.useParams()
+  const { role } = Route.useRouteContext()
   const currency = shop?.currency ?? 'GHS'
+  const canReturn =
+    can(role, 'products:write') && sale.status !== 'refunded'
 
   const total = Number(sale.totalAmount)
   const paid = Number(sale.amountPaid)
@@ -87,6 +92,16 @@ function ReceiptPage() {
           Back to sales
         </Link>
         <div className="flex items-center gap-2">
+          {canReturn && (
+            <Link
+              to="/app/sales/$saleId/return"
+              params={{ saleId }}
+              className="flex items-center gap-2 border border-amber-300 text-amber-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-50"
+            >
+              <Undo2 size={16} />
+              Return
+            </Link>
+          )}
           <button
             onClick={shareOnWhatsApp}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700"

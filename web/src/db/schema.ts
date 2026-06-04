@@ -74,7 +74,12 @@ export const paymentMethodEnum = pgEnum('payment_method', [
   'mobile_money',
 ])
 
-export const saleStatusEnum = pgEnum('sale_status', ['completed', 'credit'])
+export const saleStatusEnum = pgEnum('sale_status', [
+  'completed',
+  'credit',
+  'partially_refunded',
+  'refunded',
+])
 
 export const expenseCategoryEnum = pgEnum('expense_category', [
   'rent',
@@ -196,6 +201,38 @@ export const saleItems = pgTable('sale_items', {
   saleId: text('sale_id')
     .notNull()
     .references(() => sales.id, { onDelete: 'cascade' }),
+  productId: text('product_id').references(() => products.id, {
+    onDelete: 'set null',
+  }),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
+  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
+})
+
+export const saleReturns = pgTable('sale_returns', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  saleId: text('sale_id')
+    .notNull()
+    .references(() => sales.id, { onDelete: 'cascade' }),
+  staffId: text('staff_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  refundAmount: decimal('refund_amount', { precision: 12, scale: 2 }).notNull(),
+  reason: text('reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const saleReturnItems = pgTable('sale_return_items', {
+  id: text('id').primaryKey(),
+  returnId: text('return_id')
+    .notNull()
+    .references(() => saleReturns.id, { onDelete: 'cascade' }),
+  saleItemId: text('sale_item_id')
+    .notNull()
+    .references(() => saleItems.id, { onDelete: 'cascade' }),
   productId: text('product_id').references(() => products.id, {
     onDelete: 'set null',
   }),
