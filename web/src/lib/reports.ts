@@ -38,6 +38,7 @@ export const getReport = createServerFn({ method: 'GET' })
       .select({
         totalRevenue: sql<string>`coalesce(sum(${sales.totalAmount}), 0)`,
         totalTax: sql<string>`coalesce(sum(${sales.taxAmount}), 0)`,
+        totalDiscount: sql<string>`coalesce(sum(${sales.discountAmount}), 0)`,
         count: sql<number>`cast(count(*) as int)`,
       })
       .from(sales)
@@ -116,6 +117,7 @@ export const getReport = createServerFn({ method: 'GET' })
       revenue,
       refunds,
       taxCollected: Number(salesSummary?.totalTax ?? 0),
+      discountsGiven: Number(salesSummary?.totalDiscount ?? 0),
       totalExpenses,
       profit: revenue - totalExpenses,
       grossProfit,

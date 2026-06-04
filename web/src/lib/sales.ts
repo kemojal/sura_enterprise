@@ -53,6 +53,7 @@ export const getSaleDetail = createServerFn({ method: 'GET' })
         id: sales.id,
         totalAmount: sales.totalAmount,
         taxAmount: sales.taxAmount,
+        discountAmount: sales.discountAmount,
         amountPaid: sales.amountPaid,
         paymentMethod: sales.paymentMethod,
         status: sales.status,
@@ -132,6 +133,8 @@ export const createSale = createServerFn({ method: 'POST' })
       customerId: z.string().optional(),
       amountPaid: z.string(),
       paymentMethod: z.enum(['cash', 'credit', 'mobile_money']),
+      discountType: z.enum(['amount', 'percent']).optional(),
+      discountValue: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -152,21 +155,34 @@ export const createSale = createServerFn({ method: 'POST' })
       0,
     )
 
+    // Discount applies to the line total before tax. Clamp to [0, lineTotal].
+    let discountAmountNum = 0
+    if (data.discountType && data.discountValue) {
+      const v = Number(data.discountValue)
+      if (v > 0) {
+        discountAmountNum =
+          data.discountType === 'percent' ? lineTotal * (v / 100) : v
+      }
+    }
+    discountAmountNum = Math.min(Math.max(discountAmountNum, 0), lineTotal)
+    const discountedLine = lineTotal - discountAmountNum
+
     // Inclusive: line prices already contain tax; tax is the embedded portion.
-    // Exclusive: tax is added on top of the line total.
-    let totalAmountNum = lineTotal
+    // Exclusive: tax is added on top of the (discounted) line total.
+    let totalAmountNum = discountedLine
     let taxAmountNum = 0
     if (rate > 0) {
       if (shopTax?.taxInclusive) {
-        taxAmountNum = lineTotal * (rate / (100 + rate))
-        totalAmountNum = lineTotal
+        taxAmountNum = discountedLine * (rate / (100 + rate))
+        totalAmountNum = discountedLine
       } else {
-        taxAmountNum = lineTotal * (rate / 100)
-        totalAmountNum = lineTotal + taxAmountNum
+        taxAmountNum = discountedLine * (rate / 100)
+        totalAmountNum = discountedLine + taxAmountNum
       }
     }
     const totalAmount = totalAmountNum.toFixed(2)
     const taxAmount = taxAmountNum.toFixed(2)
+    const discountAmount = discountAmountNum.toFixed(2)
 
     const amountPaid = Number(data.amountPaid).toFixed(2)
     const status = Number(amountPaid) < Number(totalAmount) ? 'credit' : 'completed'
@@ -203,6 +219,7 @@ export const createSale = createServerFn({ method: 'POST' })
           customerId: data.customerId,
           totalAmount,
           taxAmount,
+          discountAmount,
           amountPaid,
           paymentMethod: data.paymentMethod,
           status,

@@ -214,12 +214,31 @@ function ReceiptPage() {
 
           {/* Totals */}
           <div className="px-6 py-4 border-b border-dashed space-y-1.5 text-xs">
-            {Number(sale.taxAmount) > 0 && (
+            {Number(sale.discountAmount) > 0 && (
               <>
                 <div className="flex justify-between text-gray-500">
                   <span>Subtotal</span>
-                  <span>{fmt(total - Number(sale.taxAmount), currency)}</span>
+                  <span>
+                    {fmt(
+                      total - Number(sale.taxAmount) + Number(sale.discountAmount),
+                      currency,
+                    )}
+                  </span>
                 </div>
+                <div className="flex justify-between text-green-600">
+                  <span>Discount</span>
+                  <span>−{fmt(Number(sale.discountAmount), currency)}</span>
+                </div>
+              </>
+            )}
+            {Number(sale.taxAmount) > 0 && (
+              <>
+                {Number(sale.discountAmount) === 0 && (
+                  <div className="flex justify-between text-gray-500">
+                    <span>Subtotal</span>
+                    <span>{fmt(total - Number(sale.taxAmount), currency)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-500">
                   <span>Tax</span>
                   <span>{fmt(Number(sale.taxAmount), currency)}</span>

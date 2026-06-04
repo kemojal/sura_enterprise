@@ -23,6 +23,7 @@ interface SaleFormProps {
   }[]
   taxRate?: number
   taxInclusive?: boolean
+  currency?: string
   onCancel: () => void
   onSaved: (saleId: string) => Promise<void> | void
 }
@@ -39,12 +40,19 @@ export function SaleForm({
   customers,
   taxRate = 0,
   taxInclusive = true,
+  currency = 'GHS',
   onCancel,
   onSaved,
 }: SaleFormProps) {
+  const currencySymbol =
+    new Intl.NumberFormat('en-GH', { style: 'currency', currency })
+      .formatToParts(0)
+      .find((p) => p.type === 'currency')?.value ?? currency
   const [cart, setCart] = useState<CartItem[]>([])
   const [customerId, setCustomerId] = useState('')
   const [amountPaid, setAmountPaid] = useState('')
+  const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount')
+  const [discountValue, setDiscountValue] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<
     'cash' | 'credit' | 'mobile_money'
   >('cash')
@@ -100,14 +108,23 @@ export function SaleForm({
     (sum, i) => sum + Number(i.unitPrice) * i.quantity,
     0,
   )
-  // Inclusive: tax embedded in lineTotal; Exclusive: added on top.
+  // Discount applies to line total before tax.
+  const discountRaw =
+    discountValue && Number(discountValue) > 0
+      ? discountType === 'percent'
+        ? lineTotal * (Number(discountValue) / 100)
+        : Number(discountValue)
+      : 0
+  const discount = Math.min(Math.max(discountRaw, 0), lineTotal)
+  const discountedLine = lineTotal - discount
+  // Inclusive: tax embedded in discountedLine; Exclusive: added on top.
   const taxAmount =
     taxRate > 0
       ? taxInclusive
-        ? lineTotal * (taxRate / (100 + taxRate))
-        : lineTotal * (taxRate / 100)
+        ? discountedLine * (taxRate / (100 + taxRate))
+        : discountedLine * (taxRate / 100)
       : 0
-  const total = taxInclusive ? lineTotal : lineTotal + taxAmount
+  const total = taxInclusive ? discountedLine : discountedLine + taxAmount
 
   function addToCart(product: SaleFormProps['products'][number]) {
     setCart((prev) => {
@@ -160,6 +177,8 @@ export function SaleForm({
           customerId: customerId || undefined,
           amountPaid: amountPaid || String(total),
           paymentMethod,
+          discountType,
+          discountValue: discountValue || undefined,
         },
       })
       await onSaved(sale.id)
@@ -279,20 +298,58 @@ export function SaleForm({
               ))}
             </div>
           )}
+          {/* Discount input */}
+          <div className="border-t pt-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 flex-1">Discount</span>
+              <div className="flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setDiscountType('amount')}
+                  className={`px-2 py-1 text-xs ${discountType === 'amount' ? 'bg-gray-900 text-white' : 'text-gray-500'}`}
+                >
+                  {currencySymbol}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiscountType('percent')}
+                  className={`px-2 py-1 text-xs ${discountType === 'percent' ? 'bg-gray-900 text-white' : 'text-gray-500'}`}
+                >
+                  %
+                </button>
+              </div>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                placeholder="0"
+                className="w-20 border rounded px-2 py-1 text-sm text-right"
+              />
+            </div>
+          </div>
+
           <div className="border-t pt-2 space-y-1">
+            {(taxRate > 0 || discount > 0) && (
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Subtotal</span>
+                <span>{lineTotal.toFixed(2)}</span>
+              </div>
+            )}
+            {discount > 0 && (
+              <div className="flex justify-between text-xs text-green-600">
+                <span>Discount</span>
+                <span>−{discount.toFixed(2)}</span>
+              </div>
+            )}
             {taxRate > 0 && (
-              <>
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{taxInclusive ? 'Subtotal (excl. tax)' : 'Subtotal'}</span>
-                  <span>{(total - taxAmount).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>
-                    Tax ({taxRate}%{taxInclusive ? ', incl.' : ''})
-                  </span>
-                  <span>{taxAmount.toFixed(2)}</span>
-                </div>
-              </>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>
+                  Tax ({taxRate}%{taxInclusive ? ', incl.' : ''})
+                </span>
+                <span>{taxAmount.toFixed(2)}</span>
+              </div>
             )}
             <div className="flex justify-between font-medium">
               <span>Total</span>

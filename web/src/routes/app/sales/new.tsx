@@ -49,6 +49,7 @@ function NewSalePage() {
           customers={customers}
           taxRate={config.taxRate}
           taxInclusive={config.taxInclusive}
+          currency={config.currency}
           onCancel={close}
           onSaved={(saleId) =>
             router.navigate({

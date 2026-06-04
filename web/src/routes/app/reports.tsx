@@ -84,6 +84,7 @@ function ReportsPage() {
         {[
           { label: 'Revenue', value: fmt(data.revenue), pos: true },
           { label: 'Tax Collected', value: fmt(data.taxCollected), pos: undefined },
+          { label: 'Discounts', value: fmt(data.discountsGiven), pos: false },
           { label: 'Refunds', value: fmt(data.refunds), pos: false },
           { label: 'Expenses', value: fmt(data.totalExpenses), pos: false },
           {

@@ -202,6 +202,9 @@ export const sales = pgTable('sales', {
   taxAmount: decimal('tax_amount', { precision: 12, scale: 2 })
     .notNull()
     .default('0'),
+  discountAmount: decimal('discount_amount', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
   amountPaid: decimal('amount_paid', { precision: 12, scale: 2 }).notNull(),
   paymentMethod: paymentMethodEnum('payment_method').notNull().default('cash'),
   status: saleStatusEnum('status').notNull().default('completed'),
