@@ -99,6 +99,14 @@ export const poStatusEnum = pgEnum('po_status', [
   'cancelled',
 ])
 
+export const quoteStatusEnum = pgEnum('quote_status', [
+  'draft',
+  'sent',
+  'accepted',
+  'declined',
+  'converted',
+])
+
 // ─── App tables ───────────────────────────────────────────────────────────────
 
 export const shops = pgTable('shops', {
@@ -446,4 +454,41 @@ export const cashReconciliations = pgTable('cash_reconciliations', {
   variance: decimal('variance', { precision: 12, scale: 2 }).notNull(),
   note: text('note'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Quotes / proforma invoices — not a sale until converted.
+export const quotes = pgTable('quotes', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  customerId: text('customer_id').references(() => customers.id, {
+    onDelete: 'set null',
+  }),
+  staffId: text('staff_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  status: quoteStatusEnum('status').notNull().default('draft'),
+  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+  notes: text('notes'),
+  validUntil: timestamp('valid_until'),
+  convertedSaleId: text('converted_sale_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const quoteItems = pgTable('quote_items', {
+  id: text('id').primaryKey(),
+  quoteId: text('quote_id')
+    .notNull()
+    .references(() => quotes.id, { onDelete: 'cascade' }),
+  productId: text('product_id').references(() => products.id, {
+    onDelete: 'set null',
+  }),
+  variantId: text('variant_id').references(() => productVariants.id, {
+    onDelete: 'set null',
+  }),
+  name: text('name').notNull(),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
+  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
 })
