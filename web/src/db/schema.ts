@@ -107,6 +107,8 @@ export const quoteStatusEnum = pgEnum('quote_status', [
   'converted',
 ])
 
+export const shiftStatusEnum = pgEnum('shift_status', ['open', 'closed'])
+
 // ─── App tables ───────────────────────────────────────────────────────────────
 
 export const shops = pgTable('shops', {
@@ -255,6 +257,7 @@ export const sales = pgTable('sales', {
   amountPaid: decimal('amount_paid', { precision: 12, scale: 2 }).notNull(),
   paymentMethod: paymentMethodEnum('payment_method').notNull().default('cash'),
   status: saleStatusEnum('status').notNull().default('completed'),
+  shiftId: text('shift_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -491,4 +494,27 @@ export const quoteItems = pgTable('quote_items', {
   quantity: integer('quantity').notNull(),
   unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
   subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
+})
+
+// Cashier shifts — drawer session per cashier; sales link to the open shift.
+export const shifts = pgTable('shifts', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  cashierId: text('cashier_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  cashierName: text('cashier_name'),
+  status: shiftStatusEnum('status').notNull().default('open'),
+  openingFloat: decimal('opening_float', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
+  // Filled on close:
+  expectedCash: decimal('expected_cash', { precision: 12, scale: 2 }),
+  countedCash: decimal('counted_cash', { precision: 12, scale: 2 }),
+  variance: decimal('variance', { precision: 12, scale: 2 }),
+  notes: text('notes'),
+  openedAt: timestamp('opened_at').defaultNow().notNull(),
+  closedAt: timestamp('closed_at'),
 })

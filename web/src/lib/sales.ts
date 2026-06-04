@@ -4,7 +4,7 @@ import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { customers, productVariants, products, saleItems, sales, shops, staffMembers, user } from '#/db/schema'
+import { customers, productVariants, products, saleItems, sales, shifts, shops, staffMembers, user } from '#/db/schema'
 import { logActivity } from './activity'
 import { getShopCtx } from './context'
 import { sendLowStockAlert } from './email'
@@ -248,6 +248,29 @@ export const createSale = createServerFn({ method: 'POST' })
       .from(products)
       .where(and(inArray(products.id, productIds), eq(products.shopId, shopId)))
 
+    const cashierId = (await db
+      .select({ id: staffMembers.id })
+      .from(staffMembers)
+      .where(and(eq(staffMembers.shopId, shopId), eq(staffMembers.userId, userId)))
+      .limit(1)
+      .then((r) => r[0]))?.id
+
+    // Attach to the cashier's currently open shift, if any.
+    const openShift = cashierId
+      ? (await db
+          .select({ id: shifts.id })
+          .from(shifts)
+          .where(
+            and(
+              eq(shifts.shopId, shopId),
+              eq(shifts.cashierId, cashierId),
+              eq(shifts.status, 'open'),
+            ),
+          )
+          .limit(1)
+          .then((r) => r[0]))?.id
+      : undefined
+
     const sale = await db.transaction(async (tx) => {
       const saleId = nanoid()
       const [newSale] = await tx
@@ -255,12 +278,8 @@ export const createSale = createServerFn({ method: 'POST' })
         .values({
           id: saleId,
           shopId,
-          cashierId: (await db
-            .select({ id: staffMembers.id })
-            .from(staffMembers)
-            .where(and(eq(staffMembers.shopId, shopId), eq(staffMembers.userId, userId)))
-            .limit(1)
-            .then((r) => r[0]))?.id,
+          cashierId,
+          shiftId: openShift,
           customerId: data.customerId,
           totalAmount,
           taxAmount,
