@@ -50,9 +50,73 @@ const methodLabel: Record<string, string> = {
 }
 
 const methodBar: Record<string, string> = {
-  cash: 'bg-green-500',
-  mobile_money: 'bg-blue-500',
+  cash: 'bg-palm',
+  mobile_money: 'bg-lagoon-deep',
   credit: 'bg-amber-500',
+}
+
+function SalesTrend({
+  data,
+  currency,
+}: {
+  data: { date: string; total: number }[]
+  currency: string
+}) {
+  if (data.length === 0) return null
+  const max = Math.max(...data.map((d) => d.total), 1)
+  const total = data.reduce((s, d) => s + d.total, 0)
+  const peak = data.reduce((a, b) => (b.total > a.total ? b : a), data[0])
+  // Show date labels sparsely when many bars
+  const labelEvery = Math.ceil(data.length / 12)
+
+  function fmtCur(n: number) {
+    return new Intl.NumberFormat('en-GH', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(n)
+  }
+
+  return (
+    <div className="bg-white rounded-xl border p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h3 className="font-medium text-gray-700">Daily Revenue</h3>
+        <div className="text-xs text-gray-400">
+          Peak {fmtCur(peak.total)} on{' '}
+          {new Date(peak.date).toLocaleDateString('en-GH', {
+            day: 'numeric',
+            month: 'short',
+          })}{' '}
+          · Total {fmtCur(total)}
+        </div>
+      </div>
+      <div className="flex items-end gap-1 h-44">
+        {data.map((d, i) => {
+          const heightPct = (d.total / max) * 100
+          return (
+            <div
+              key={d.date}
+              className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group"
+            >
+              <div
+                className="w-full rounded-t bg-blue-200 hover:bg-blue-400 transition-colors relative"
+                style={{ height: `${Math.max(heightPct, 1)}%` }}
+                title={`${new Date(d.date).toLocaleDateString()}: ${fmtCur(d.total)}`}
+              />
+              {i % labelEvery === 0 && (
+                <span className="text-[9px] text-gray-400 whitespace-nowrap">
+                  {new Date(d.date).toLocaleDateString('en-GH', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function ReportsPage() {
@@ -122,6 +186,9 @@ function ReportsPage() {
           </div>
         ))}
       </div>
+
+      {/* Daily revenue trend */}
+      <SalesTrend data={data.dailySales} currency={data.currency} />
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="bg-white rounded-xl border p-5 space-y-3">

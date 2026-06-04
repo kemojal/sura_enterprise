@@ -114,6 +114,35 @@ export const getReport = createServerFn({ method: 'GET' })
         ),
       )
 
+    // Daily revenue series across the range, bucketed in JS by local day so it
+    // matches the from/to boundaries the cards use.
+    const trendRows = await db
+      .select({ createdAt: sales.createdAt, total: sales.totalAmount })
+      .from(sales)
+      .where(and(...salesConditions))
+    const dayBuckets = new Map<number, number>()
+    for (const row of trendRows) {
+      if (!row.createdAt) continue
+      const d = new Date(row.createdAt)
+      d.setHours(0, 0, 0, 0)
+      dayBuckets.set(d.getTime(), (dayBuckets.get(d.getTime()) ?? 0) + Number(row.total))
+    }
+    const dailySales: { date: string; total: number }[] = []
+    const cursor = new Date(from)
+    cursor.setHours(0, 0, 0, 0)
+    const lastDay = new Date(to)
+    lastDay.setHours(0, 0, 0, 0)
+    // Cap at 92 days to keep the payload + chart sane
+    let guard = 0
+    while (cursor.getTime() <= lastDay.getTime() && guard < 92) {
+      dailySales.push({
+        date: cursor.toISOString().slice(0, 10),
+        total: dayBuckets.get(cursor.getTime()) ?? 0,
+      })
+      cursor.setDate(cursor.getDate() + 1)
+      guard++
+    }
+
     const grossRevenue = Number(salesSummary?.totalRevenue ?? 0)
     const refunds = Number(refundsSummary?.total ?? 0)
     const revenue = grossRevenue - refunds
@@ -137,6 +166,7 @@ export const getReport = createServerFn({ method: 'GET' })
       productProfit,
       expByCategory,
       salesByMethod,
+      dailySales,
       currency: shop?.currency ?? 'GHS',
     }
   })
