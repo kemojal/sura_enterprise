@@ -280,6 +280,7 @@ export const createSale = createServerFn({ method: 'POST' })
           shopId,
           cashierId,
           shiftId: openShift,
+          branchId: ctx.branchId,
           customerId: data.customerId,
           totalAmount,
           taxAmount,

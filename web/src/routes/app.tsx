@@ -10,6 +10,7 @@ import {
   Activity,
   Banknote,
   BarChart3,
+  Building2,
   ClipboardList,
   Clock,
   FileText,
@@ -31,6 +32,7 @@ import {
 import { authClient } from '#/lib/auth-client'
 import { can } from '#/lib/permissions'
 import { getAppContext } from '#/lib/shop'
+import { BranchSwitcher } from '#/components/branch-switcher'
 
 export const Route = createFileRoute('/app')({
   beforeLoad: async ({ location }) => {
@@ -67,6 +69,7 @@ const navItems = [
   { to: '/app/staff-report', label: 'Staff report', icon: Trophy, resource: 'reports' },
   { to: '/app/activity', label: 'Activity', icon: Activity, resource: 'activity' },
   { to: '/app/staff', label: 'Staff', icon: Users, resource: 'staff' },
+  { to: '/app/branches', label: 'Branches', icon: Building2, resource: 'settings' },
   { to: '/app/settings', label: 'Settings', icon: Settings, resource: 'settings' },
 ] as const
 
@@ -117,6 +120,8 @@ function AppLayout() {
           </div>
         </Link>
       </div>
+
+      <BranchSwitcher />
 
       <nav className="flex-1 px-3 pt-1 space-y-0.5 overflow-y-auto">
         {visibleItems.map(({ to, label, icon: Icon }) => {

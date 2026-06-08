@@ -200,6 +200,9 @@ export const products = pgTable('products', {
   imageUrl: text('image_url'),
   hasVariants: boolean('has_variants').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
+  branchId: text('branch_id').references(() => branches.id, {
+    onDelete: 'set null',
+  }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -261,6 +264,7 @@ export const sales = pgTable('sales', {
   paymentMethod: paymentMethodEnum('payment_method').notNull().default('cash'),
   status: saleStatusEnum('status').notNull().default('completed'),
   shiftId: text('shift_id'),
+  branchId: text('branch_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -520,4 +524,49 @@ export const shifts = pgTable('shifts', {
   notes: text('notes'),
   openedAt: timestamp('opened_at').defaultNow().notNull(),
   closedAt: timestamp('closed_at'),
+})
+
+// Physical branches / locations under one shop. Each product row belongs to a
+// branch, giving per-branch stock; a sale records the branch it happened at.
+export const branches = pgTable('branches', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  address: text('address'),
+  phone: text('phone'),
+  isMain: boolean('is_main').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Stock moved between two branches. Items reference the source product row;
+// the matching product row in the destination branch is found or created.
+export const stockTransfers = pgTable('stock_transfers', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  fromBranchId: text('from_branch_id')
+    .notNull()
+    .references(() => branches.id, { onDelete: 'cascade' }),
+  toBranchId: text('to_branch_id')
+    .notNull()
+    .references(() => branches.id, { onDelete: 'cascade' }),
+  staffId: text('staff_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  actorName: text('actor_name'),
+  note: text('note'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const stockTransferItems = pgTable('stock_transfer_items', {
+  id: text('id').primaryKey(),
+  transferId: text('transfer_id')
+    .notNull()
+    .references(() => stockTransfers.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  quantity: integer('quantity').notNull(),
 })

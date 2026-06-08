@@ -18,8 +18,9 @@ export const listProducts = createServerFn({ method: 'GET' })
   )
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId } = await getShopCtx(request.headers)
+    const { shopId, branchId } = await getShopCtx(request.headers)
     const conditions = [eq(products.shopId, shopId)]
+    if (branchId) conditions.push(eq(products.branchId, branchId))
     if (data.search) conditions.push(ilike(products.name, `%${data.search}%`))
     if (data.categoryId)
       conditions.push(eq(products.categoryId, data.categoryId))
@@ -49,7 +50,7 @@ export const listProducts = createServerFn({ method: 'GET' })
 export const listSellableItems = createServerFn({ method: 'GET' }).handler(
   async () => {
     const request = getRequest()
-    const { shopId } = await getShopCtx(request.headers)
+    const { shopId, branchId } = await getShopCtx(request.headers)
 
     const plainProducts = await db
       .select({
@@ -66,6 +67,7 @@ export const listSellableItems = createServerFn({ method: 'GET' }).handler(
           eq(products.shopId, shopId),
           eq(products.isActive, true),
           eq(products.hasVariants, false),
+          ...(branchId ? [eq(products.branchId, branchId)] : []),
         ),
       )
       .orderBy(products.name)
@@ -88,6 +90,7 @@ export const listSellableItems = createServerFn({ method: 'GET' }).handler(
           eq(productVariants.shopId, shopId),
           eq(productVariants.isActive, true),
           eq(products.isActive, true),
+          ...(branchId ? [eq(products.branchId, branchId)] : []),
         ),
       )
       .orderBy(products.name)
@@ -142,7 +145,7 @@ export const findProductByBarcode = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ barcode: z.string() }))
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId } = await getShopCtx(request.headers)
+    const { shopId, branchId } = await getShopCtx(request.headers)
 
     // Variant barcodes take priority (they're the sellable SKU)
     const [variant] = await db
@@ -163,6 +166,7 @@ export const findProductByBarcode = createServerFn({ method: 'GET' })
           eq(productVariants.shopId, shopId),
           eq(productVariants.barcode, data.barcode),
           eq(productVariants.isActive, true),
+          ...(branchId ? [eq(products.branchId, branchId)] : []),
         ),
       )
       .limit(1)
@@ -194,6 +198,7 @@ export const findProductByBarcode = createServerFn({ method: 'GET' })
           eq(products.barcode, data.barcode),
           eq(products.hasVariants, false),
           eq(products.isActive, true),
+          ...(branchId ? [eq(products.branchId, branchId)] : []),
         ),
       )
       .limit(1)
@@ -204,12 +209,13 @@ export const createProduct = createServerFn({ method: 'POST' })
   .inputValidator(productSchema)
   .handler(async ({ data }) => {
     const request = getRequest()
-    const { shopId } = await getShopCtxWithPermission(request.headers, 'products:write')
+    const { shopId, branchId } = await getShopCtxWithPermission(request.headers, 'products:write')
     const [product] = await db
       .insert(products)
       .values({
         id: nanoid(),
         shopId,
+        branchId,
         ...data,
         categoryId: data.categoryId || undefined,
         supplierId: data.supplierId || undefined,

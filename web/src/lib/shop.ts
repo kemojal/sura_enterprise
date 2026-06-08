@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { shops, staffMembers } from '#/db/schema'
+import { branches, shops, staffMembers } from '#/db/schema'
 import { auth } from './auth'
 import { getShopCtxForUser, getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
@@ -125,6 +125,15 @@ export const createShop = createServerFn({ method: 'POST' })
       name: session.user.name,
       email: session.user.email,
       role: 'owner',
+      isActive: true,
+    })
+
+    // Every shop starts with one main branch holding its stock.
+    await db.insert(branches).values({
+      id: nanoid(),
+      shopId,
+      name: 'Main',
+      isMain: true,
       isActive: true,
     })
 

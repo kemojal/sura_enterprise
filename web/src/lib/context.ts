@@ -1,7 +1,7 @@
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { db } from '#/db/index'
-import { shops, staffMembers } from '#/db/schema'
+import { branches, shops, staffMembers } from '#/db/schema'
 import { auth } from './auth'
 import { requireRole } from './permissions'
 import type { Resource, StaffRole } from './permissions'
@@ -12,6 +12,38 @@ export interface ShopContext {
   staffId: string | undefined
   userId: string
   userName?: string
+  branchId?: string
+  branchName?: string
+}
+
+const BRANCH_COOKIE = 'sf_branch'
+
+function readCookie(headers: Headers, name: string): string | undefined {
+  const raw = headers.get('cookie')
+  if (!raw) return undefined
+  for (const part of raw.split(';')) {
+    const [k, ...v] = part.trim().split('=')
+    if (k === name) return decodeURIComponent(v.join('='))
+  }
+  return undefined
+}
+
+// Resolve the active branch for a request: the cookie-selected branch if it
+// belongs to this shop and is active, otherwise the main branch (or the first).
+async function resolveBranch(shopId: string, headers: Headers) {
+  const list = await db
+    .select({ id: branches.id, name: branches.name, isMain: branches.isMain })
+    .from(branches)
+    .where(and(eq(branches.shopId, shopId), eq(branches.isActive, true)))
+    .orderBy(asc(branches.createdAt))
+  if (list.length === 0) return { branchId: undefined, branchName: undefined }
+
+  const wanted = readCookie(headers, BRANCH_COOKIE)
+  const picked =
+    list.find((b) => b.id === wanted) ??
+    list.find((b) => b.isMain) ??
+    list[0]
+  return { branchId: picked.id, branchName: picked.name }
 }
 
 export async function getShopCtxForUser(
@@ -70,7 +102,9 @@ export async function getShopCtxForUser(
 export async function getShopCtx(headers: Headers): Promise<ShopContext> {
   const session = await auth.api.getSession({ headers })
   if (!session) throw new Error('Not authenticated')
-  return getShopCtxForUser(session.user.id, session.user.name)
+  const ctx = await getShopCtxForUser(session.user.id, session.user.name)
+  const branch = await resolveBranch(ctx.shopId, headers)
+  return { ...ctx, ...branch }
 }
 
 export async function getShopCtxWithPermission(
