@@ -7,6 +7,7 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Textarea } from '#/components/ui/textarea'
 import { can } from '#/lib/permissions'
+import { FieldPermissionsPanel } from '#/components/settings/field-permissions-panel'
 import { getShopLogoUploadUrl } from '#/lib/r2'
 import { getShopSettings, updateShop } from '#/lib/shop'
 
@@ -443,6 +444,8 @@ function SettingsPage() {
           )}
         </div>
       </form>
+
+      <FieldPermissionsPanel />
     </div>
   )
 }
