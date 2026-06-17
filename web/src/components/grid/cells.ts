@@ -22,18 +22,20 @@ export function cellModel(
   field: FieldDef,
   raw: unknown,
   editable: boolean,
+  runtimeOptions?: ReadonlyArray<{ value: string; label: string }>,
 ): CellModel {
   const readonly = !editable || field.displayOnly === true
   const value = raw == null ? '' : String(raw)
+  const options = runtimeOptions ?? field.options
 
-  if (field.kind === 'enum') {
-    const opt = field.options?.find((o) => o.value === value)
+  if (field.kind === 'enum' || field.kind === 'relation') {
+    const opt = options?.find((o) => o.value === value)
     return {
       kind: 'enum',
       value,
-      display: opt?.label ?? value,
+      display: value === '' ? '' : (opt?.label ?? value),
       readonly,
-      options: field.options,
+      options,
     }
   }
 

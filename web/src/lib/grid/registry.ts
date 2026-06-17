@@ -1,11 +1,11 @@
 import { z } from 'zod'
 import type { PgTable } from 'drizzle-orm/pg-core'
 
-import { expenses, suppliers } from '#/db/schema'
+import { expenses, products, suppliers } from '#/db/schema'
 import type { Resource, StaffRole } from '#/lib/permissions'
 import { expenseCats } from '#/lib/expenses'
 
-export type CellKind = 'text' | 'number' | 'currency' | 'enum' | 'boolean' | 'date'
+export type CellKind = 'text' | 'number' | 'currency' | 'enum' | 'boolean' | 'date' | 'relation'
 export type NonOwnerRole = Exclude<StaffRole, 'owner'>
 
 export interface FieldDef {
@@ -67,6 +67,16 @@ const currency = z
   .finite()
   .nonnegative()
   .transform((n) => n.toFixed(2))
+
+// Coerce a number or numeric string to a non-negative integer.
+const wholeNumber = z.coerce.number().int().nonnegative()
+
+// Optional relation id: blank string normalizes to null.
+const optionalRelation = z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .transform((v) => (v ? v : null))
 
 export const REGISTRY: Record<string, ResourceDef> = {
   suppliers: {
@@ -131,6 +141,43 @@ export const REGISTRY: Record<string, ResourceDef> = {
       {
         key: 'amount', label: 'Amount', kind: 'currency',
         validator: currency, financial: true, editableByDefault: { manager: false },
+      },
+    ],
+  },
+  products: {
+    resource: 'products',
+    entityType: 'product',
+    permission: 'products:write',
+    table: products,
+    fields: [
+      {
+        key: 'name', label: 'Name', kind: 'text',
+        validator: z.string().trim().min(1).max(200),
+        editableByDefault: { manager: true },
+      },
+      {
+        key: 'categoryId', label: 'Category', kind: 'relation',
+        validator: optionalRelation, editableByDefault: { manager: true },
+      },
+      {
+        key: 'buyingPrice', label: 'Buy price', kind: 'currency',
+        validator: currency, financial: true, editableByDefault: { manager: false },
+      },
+      {
+        key: 'sellingPrice', label: 'Sell price', kind: 'currency',
+        validator: currency, financial: true, editableByDefault: { manager: false },
+      },
+      {
+        key: 'stockQty', label: 'Stock', kind: 'number',
+        validator: z.any(), displayOnly: true,
+      },
+      {
+        key: 'lowStockThreshold', label: 'Low-stock alert', kind: 'number',
+        validator: wholeNumber, editableByDefault: { manager: true },
+      },
+      {
+        key: 'barcode', label: 'Barcode', kind: 'text',
+        validator: optionalText, editableByDefault: { manager: true },
       },
     ],
   },

@@ -54,3 +54,32 @@ describe('registry: expenses', () => {
     expect(getResource('expenses')?.table).toBeDefined()
   })
 })
+
+describe('registry: products', () => {
+  it('exposes a products resource gated by products:write', () => {
+    expect(REGISTRY.products.entityType).toBe('product')
+    expect(REGISTRY.products.permission).toBe('products:write')
+  })
+
+  it('category is a relation field; stock is display-only; prices are financial', () => {
+    expect(getField('products', 'categoryId')?.kind).toBe('relation')
+    expect(getField('products', 'stockQty')?.displayOnly).toBe(true)
+    expect(getField('products', 'buyingPrice')?.financial).toBe(true)
+    expect(getField('products', 'sellingPrice')?.financial).toBe(true)
+  })
+
+  it('lowStockThreshold validator accepts whole numbers, rejects negatives/decimals/junk', () => {
+    const v = getField('products', 'lowStockThreshold')!.validator
+    expect(v.safeParse(5).data).toBe(5)
+    expect(v.safeParse('5').data).toBe(5)
+    expect(v.safeParse(-1).success).toBe(false)
+    expect(v.safeParse(2.5).success).toBe(false)
+    expect(v.safeParse('abc').success).toBe(false)
+  })
+
+  it('categoryId validator maps blank to null, passes an id through', () => {
+    const v = getField('products', 'categoryId')!.validator
+    expect(v.safeParse('').data).toBe(null)
+    expect(v.safeParse('cat_123').data).toBe('cat_123')
+  })
+})

@@ -81,3 +81,24 @@ describe('cellModel: date / displayOnly', () => {
     expect(c.readonly).toBe(true) // displayOnly overrides editable
   })
 })
+
+const relField: FieldDef = {
+  key: 'categoryId',
+  label: 'Category',
+  kind: 'relation',
+  validator: {} as never,
+}
+
+describe('cellModel: relation with runtime options', () => {
+  it('uses runtime options for the display label and carries them', () => {
+    const opts = [{ value: 'c1', label: 'Drinks' }]
+    const c = cellModel(relField, 'c1', true, opts)
+    expect(c.kind).toBe('enum') // relation renders as a dropdown
+    expect(c.value).toBe('c1')
+    expect(c.display).toBe('Drinks')
+    expect(c.options).toBe(opts)
+  })
+  it('blank relation value shows empty display', () => {
+    expect(cellModel(relField, null, true, [{ value: 'c1', label: 'Drinks' }]).display).toBe('')
+  })
+})
