@@ -7,10 +7,11 @@ export interface GridColumnModel {
 }
 
 export interface CellModel {
-  kind: 'text' | 'number'
+  kind: 'text' | 'number' | 'enum'
   value: string
   display: string
   readonly: boolean
+  options?: ReadonlyArray<{ value: string; label: string }>
 }
 
 export function buildColumns(fields: FieldDef[]): GridColumnModel[] {
@@ -22,8 +23,28 @@ export function cellModel(
   raw: unknown,
   editable: boolean,
 ): CellModel {
-  const str = raw == null ? '' : String(raw)
-  const kind: CellModel['kind'] =
-    field.kind === 'number' || field.kind === 'currency' ? 'number' : 'text'
-  return { kind, value: str, display: str, readonly: !editable }
+  const readonly = !editable || field.displayOnly === true
+  const value = raw == null ? '' : String(raw)
+
+  if (field.kind === 'enum') {
+    const opt = field.options?.find((o) => o.value === value)
+    return {
+      kind: 'enum',
+      value,
+      display: opt?.label ?? value,
+      readonly,
+      options: field.options,
+    }
+  }
+
+  if (field.kind === 'number' || field.kind === 'currency') {
+    return { kind: 'number', value, display: value, readonly }
+  }
+
+  if (field.kind === 'date') {
+    // raw arrives as an ISO string over the wire; show the yyyy-mm-dd portion.
+    return { kind: 'text', value, display: value.slice(0, 10), readonly }
+  }
+
+  return { kind: 'text', value, display: value, readonly }
 }

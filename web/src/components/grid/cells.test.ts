@@ -40,3 +40,44 @@ describe('cellModel', () => {
     expect(c.display).toBe('12.50')
   })
 })
+
+const catField: FieldDef = {
+  key: 'category',
+  label: 'Category',
+  kind: 'enum',
+  validator: {} as never,
+  options: [
+    { value: 'rent', label: 'Rent' },
+    { value: 'misc', label: 'Miscellaneous' },
+  ],
+}
+const dateField: FieldDef = {
+  key: 'date',
+  label: 'Date',
+  kind: 'date',
+  validator: {} as never,
+  displayOnly: true,
+}
+
+describe('cellModel: enum', () => {
+  it('shows the option label, keeps the raw value, carries options', () => {
+    const c = cellModel(catField, 'rent', true)
+    expect(c.kind).toBe('enum')
+    expect(c.value).toBe('rent')
+    expect(c.display).toBe('Rent')
+    expect(c.readonly).toBe(false)
+    expect(c.options).toBe(catField.options)
+  })
+  it('falls back to the raw value when no matching option', () => {
+    expect(cellModel(catField, 'unknown', true).display).toBe('unknown')
+  })
+})
+
+describe('cellModel: date / displayOnly', () => {
+  it('date renders the ISO date portion and is always read-only', () => {
+    const c = cellModel(dateField, '2026-06-17T10:00:00.000Z', true)
+    expect(c.kind).toBe('text')
+    expect(c.display).toBe('2026-06-17')
+    expect(c.readonly).toBe(true) // displayOnly overrides editable
+  })
+})
