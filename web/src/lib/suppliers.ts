@@ -1,12 +1,17 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { desc, sql } from 'drizzle-orm'
-
 import { db } from '#/db/index'
-import { products, purchaseOrders, shops, suppliers } from '#/db/schema'
+import {
+  fieldPermissions,
+  products,
+  purchaseOrders,
+  recordLocks,
+  shops,
+  suppliers,
+} from '#/db/schema'
 import { getShopCtxWithPermission } from './context'
 import { nanoid } from './nanoid'
 
@@ -123,3 +128,34 @@ export const updateSupplier = createServerFn({ method: 'POST' })
       .returning()
     return supplier
   })
+
+export const listSuppliersGrid = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const request = getRequest()
+    const { shopId, role } = await getShopCtxWithPermission(
+      request.headers,
+      'suppliers',
+    )
+    const [rows, perms, locks] = await Promise.all([
+      db
+        .select()
+        .from(suppliers)
+        .where(eq(suppliers.shopId, shopId))
+        .orderBy(suppliers.name),
+      db
+        .select()
+        .from(fieldPermissions)
+        .where(eq(fieldPermissions.shopId, shopId)),
+      db
+        .select()
+        .from(recordLocks)
+        .where(
+          and(
+            eq(recordLocks.shopId, shopId),
+            eq(recordLocks.entityType, 'supplier'),
+          ),
+        ),
+    ])
+    return { rows, perms, locks, role }
+  },
+)
