@@ -4,10 +4,48 @@ import { and, eq, ilike } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { categories, productVariants, products } from '#/db/schema'
+import {
+  categories,
+  fieldPermissions,
+  productVariants,
+  products,
+  recordLocks,
+} from '#/db/schema'
 import { logActivity } from './activity'
 import { getShopCtx, getShopCtxWithPermission } from './context'
+import type { ShopContext } from './context'
 import { nanoid } from './nanoid'
+
+// Core query funcs take a resolved ctx so combined page-data fns can run
+// several of them after a single getShopCtx() instead of one per server fn.
+export async function _listProductsCore(
+  ctx: ShopContext,
+  data: { search?: string; categoryId?: string },
+) {
+  const conditions = [eq(products.shopId, ctx.shopId)]
+  if (ctx.branchId) conditions.push(eq(products.branchId, ctx.branchId))
+  if (data.search) conditions.push(ilike(products.name, `%${data.search}%`))
+  if (data.categoryId) conditions.push(eq(products.categoryId, data.categoryId))
+  return db
+    .select({
+      id: products.id,
+      name: products.name,
+      sellingPrice: products.sellingPrice,
+      buyingPrice: products.buyingPrice,
+      stockQty: products.stockQty,
+      lowStockThreshold: products.lowStockThreshold,
+      isActive: products.isActive,
+      categoryId: products.categoryId,
+      imageUrl: products.imageUrl,
+      barcode: products.barcode,
+      hasVariants: products.hasVariants,
+      categoryName: categories.name,
+    })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .where(and(...conditions))
+    .orderBy(products.name)
+}
 
 export const listProducts = createServerFn({ method: 'GET' })
   .inputValidator(
@@ -16,117 +54,95 @@ export const listProducts = createServerFn({ method: 'GET' })
       categoryId: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => {
-    const request = getRequest()
-    const { shopId, branchId } = await getShopCtx(request.headers)
-    const conditions = [eq(products.shopId, shopId)]
-    if (branchId) conditions.push(eq(products.branchId, branchId))
-    if (data.search) conditions.push(ilike(products.name, `%${data.search}%`))
-    if (data.categoryId)
-      conditions.push(eq(products.categoryId, data.categoryId))
-    return db
-      .select({
-        id: products.id,
-        name: products.name,
-        sellingPrice: products.sellingPrice,
-        buyingPrice: products.buyingPrice,
-        stockQty: products.stockQty,
-        lowStockThreshold: products.lowStockThreshold,
-        isActive: products.isActive,
-        categoryId: products.categoryId,
-        imageUrl: products.imageUrl,
-        barcode: products.barcode,
-        hasVariants: products.hasVariants,
-        categoryName: categories.name,
-      })
-      .from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .where(and(...conditions))
-      .orderBy(products.name)
-  })
+  .handler(async ({ data }) =>
+    _listProductsCore(await getShopCtx(getRequest().headers), data),
+  )
 
 // Sellable units for the POS: products without variants + every active variant
 // of products with variants, each as its own pickable line.
+export async function _listSellableItemsCore(ctx: ShopContext) {
+  const { shopId, branchId } = ctx
+
+  const plainProducts = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      sellingPrice: products.sellingPrice,
+      stockQty: products.stockQty,
+      imageUrl: products.imageUrl,
+      barcode: products.barcode,
+    })
+    .from(products)
+    .where(
+      and(
+        eq(products.shopId, shopId),
+        eq(products.isActive, true),
+        eq(products.hasVariants, false),
+        ...(branchId ? [eq(products.branchId, branchId)] : []),
+      ),
+    )
+    .orderBy(products.name)
+
+  const variants = await db
+    .select({
+      variantId: productVariants.id,
+      productId: productVariants.productId,
+      productName: products.name,
+      variantName: productVariants.name,
+      sellingPrice: productVariants.sellingPrice,
+      stockQty: productVariants.stockQty,
+      barcode: productVariants.barcode,
+      imageUrl: products.imageUrl,
+    })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(
+      and(
+        eq(productVariants.shopId, shopId),
+        eq(productVariants.isActive, true),
+        eq(products.isActive, true),
+        ...(branchId ? [eq(products.branchId, branchId)] : []),
+      ),
+    )
+    .orderBy(products.name)
+
+  return {
+    products: plainProducts.map((p) => ({
+      id: p.id,
+      variantId: null as string | null,
+      name: p.name,
+      sellingPrice: p.sellingPrice,
+      stockQty: p.stockQty,
+      imageUrl: p.imageUrl,
+      barcode: p.barcode,
+    })),
+    variants: variants.map((v) => ({
+      id: v.productId,
+      variantId: v.variantId,
+      name: `${v.productName} — ${v.variantName}`,
+      sellingPrice: v.sellingPrice,
+      stockQty: v.stockQty,
+      imageUrl: v.imageUrl,
+      barcode: v.barcode,
+    })),
+  }
+}
+
 export const listSellableItems = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    const request = getRequest()
-    const { shopId, branchId } = await getShopCtx(request.headers)
-
-    const plainProducts = await db
-      .select({
-        id: products.id,
-        name: products.name,
-        sellingPrice: products.sellingPrice,
-        stockQty: products.stockQty,
-        imageUrl: products.imageUrl,
-        barcode: products.barcode,
-      })
-      .from(products)
-      .where(
-        and(
-          eq(products.shopId, shopId),
-          eq(products.isActive, true),
-          eq(products.hasVariants, false),
-          ...(branchId ? [eq(products.branchId, branchId)] : []),
-        ),
-      )
-      .orderBy(products.name)
-
-    const variants = await db
-      .select({
-        variantId: productVariants.id,
-        productId: productVariants.productId,
-        productName: products.name,
-        variantName: productVariants.name,
-        sellingPrice: productVariants.sellingPrice,
-        stockQty: productVariants.stockQty,
-        barcode: productVariants.barcode,
-        imageUrl: products.imageUrl,
-      })
-      .from(productVariants)
-      .innerJoin(products, eq(productVariants.productId, products.id))
-      .where(
-        and(
-          eq(productVariants.shopId, shopId),
-          eq(productVariants.isActive, true),
-          eq(products.isActive, true),
-          ...(branchId ? [eq(products.branchId, branchId)] : []),
-        ),
-      )
-      .orderBy(products.name)
-
-    return {
-      products: plainProducts.map((p) => ({
-        id: p.id,
-        variantId: null as string | null,
-        name: p.name,
-        sellingPrice: p.sellingPrice,
-        stockQty: p.stockQty,
-        imageUrl: p.imageUrl,
-        barcode: p.barcode,
-      })),
-      variants: variants.map((v) => ({
-        id: v.productId,
-        variantId: v.variantId,
-        name: `${v.productName} — ${v.variantName}`,
-        sellingPrice: v.sellingPrice,
-        stockQty: v.stockQty,
-        imageUrl: v.imageUrl,
-        barcode: v.barcode,
-      })),
-    }
-  },
+  async () => _listSellableItemsCore(await getShopCtx(getRequest().headers)),
 )
 
-export const listCategories = createServerFn({ method: 'GET' }).handler(async () => {
-  const request = getRequest()
-  const { shopId } = await getShopCtx(request.headers)
+export async function _listCategoriesCore(ctx: ShopContext) {
   return db
     .select()
     .from(categories)
-    .where(eq(categories.shopId, shopId))
+    .where(eq(categories.shopId, ctx.shopId))
     .orderBy(categories.name)
-})
+}
+
+export const listCategories = createServerFn({ method: 'GET' }).handler(
+  async () => _listCategoriesCore(await getShopCtx(getRequest().headers)),
+)
 
 const productSchema = z.object({
   name: z.string().min(1),
@@ -364,4 +380,62 @@ export const bulkImportProducts = createServerFn({ method: 'POST' })
     })
 
     return { created, updated }
+  })
+
+export const listProductsGrid = createServerFn({ method: 'GET' })
+  .inputValidator(
+    z.object({
+      search: z.string().optional(),
+      categoryId: z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const request = getRequest()
+    const ctx = await getShopCtxWithPermission(request.headers, 'products')
+    const { shopId, branchId, role } = ctx
+
+    const conditions = [eq(products.shopId, shopId)]
+    if (branchId) conditions.push(eq(products.branchId, branchId))
+    if (data.search) conditions.push(ilike(products.name, `%${data.search}%`))
+    if (data.categoryId) conditions.push(eq(products.categoryId, data.categoryId))
+
+    const [rows, cats, perms, locks] = await Promise.all([
+      db
+        .select({
+          id: products.id,
+          name: products.name,
+          categoryId: products.categoryId,
+          categoryName: categories.name,
+          buyingPrice: products.buyingPrice,
+          sellingPrice: products.sellingPrice,
+          stockQty: products.stockQty,
+          lowStockThreshold: products.lowStockThreshold,
+          barcode: products.barcode,
+          imageUrl: products.imageUrl,
+          hasVariants: products.hasVariants,
+        })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .where(and(...conditions))
+        .orderBy(products.name),
+      db
+        .select({ id: categories.id, name: categories.name })
+        .from(categories)
+        .where(eq(categories.shopId, shopId))
+        .orderBy(categories.name),
+      db
+        .select()
+        .from(fieldPermissions)
+        .where(eq(fieldPermissions.shopId, shopId)),
+      db
+        .select()
+        .from(recordLocks)
+        .where(
+          and(
+            eq(recordLocks.shopId, shopId),
+            eq(recordLocks.entityType, 'product'),
+          ),
+        ),
+    ])
+    return { rows, categories: cats, perms, locks, role }
   })
