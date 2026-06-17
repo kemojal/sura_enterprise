@@ -97,7 +97,11 @@ export function ExpensesContent({
         data: { resource: 'expenses', id: rec.id, field: fieldKey, value },
       })) as Partial<ExpenseRow>
       setRows((prev) =>
-        prev.map((r, i) => (i === rowIndex ? { ...r, ...updated } : r)),
+        // `updated` is the base expenses row — it omits the joined `recordedBy`,
+        // so preserve it explicitly rather than relying on key-absence.
+        prev.map((r, i) =>
+          i === rowIndex ? { ...r, ...updated, recordedBy: r.recordedBy } : r,
+        ),
       )
       return true
     } catch (e) {

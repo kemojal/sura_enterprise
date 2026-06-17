@@ -39,8 +39,10 @@ export default function GlideGrid({
   const getCellContent = useCallback(
     ([col, row]: Item): GridCell => {
       const field = fields[col]
-      const editable = isEditable(row, field.key)
-      const m = cellModel(field, rows[row]?.[field.key], editable)
+      const m = cellModel(field, rows[row]?.[field.key], isEditable(row, field.key))
+      // m.readonly folds in permission/lock AND display-only columns, so it is
+      // the single source of truth for client-side editability.
+      const editable = !m.readonly
       const themeOverride = editable ? undefined : lockedTheme
 
       if (m.kind === 'enum') {
@@ -58,7 +60,7 @@ export default function GlideGrid({
             })),
             value: m.value,
           },
-        } as GridCell
+        }
       }
 
       if (m.kind === 'number') {
@@ -96,7 +98,7 @@ export default function GlideGrid({
         const data = newValue.data as { value?: string }
         value = data.value
       } else {
-        value = (newValue.data as string)
+        value = (newValue.data)
       }
       void onEdit(row, field.key, value)
     },
