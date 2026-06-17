@@ -4,7 +4,12 @@ import { and, desc, eq, gte, lte } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index'
-import { expenses, staffMembers } from '#/db/schema'
+import {
+  expenses,
+  fieldPermissions,
+  recordLocks,
+  staffMembers,
+} from '#/db/schema'
 import { getShopCtxWithPermission } from './context'
 
 export const listExpenses = createServerFn({ method: 'GET' })
@@ -48,6 +53,56 @@ export const expenseCats = [
   'packaging',
   'misc',
 ] as const
+
+export const listExpensesGrid = createServerFn({ method: 'GET' })
+  .inputValidator(
+    z.object({
+      from: z.string().optional(),
+      to: z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const request = getRequest()
+    const { shopId, role } = await getShopCtxWithPermission(
+      request.headers,
+      'expenses',
+    )
+    const conditions = [eq(expenses.shopId, shopId)]
+    if (data.from) conditions.push(gte(expenses.date, new Date(data.from)))
+    if (data.to) conditions.push(lte(expenses.date, new Date(data.to)))
+
+    const [rows, perms, locks] = await Promise.all([
+      db
+        .select({
+          id: expenses.id,
+          category: expenses.category,
+          amount: expenses.amount,
+          description: expenses.description,
+          date: expenses.date,
+          recordedById: expenses.recordedById,
+          recordedBy: staffMembers.name,
+        })
+        .from(expenses)
+        .leftJoin(staffMembers, eq(expenses.recordedById, staffMembers.id))
+        .where(and(...conditions))
+        .orderBy(desc(expenses.date))
+        .limit(100),
+      db
+        .select()
+        .from(fieldPermissions)
+        .where(eq(fieldPermissions.shopId, shopId)),
+      db
+        .select()
+        .from(recordLocks)
+        .where(
+          and(
+            eq(recordLocks.shopId, shopId),
+            eq(recordLocks.entityType, 'expense'),
+          ),
+        ),
+    ])
+    return { rows, perms, locks, role }
+  })
 
 export const createExpense = createServerFn({ method: 'POST' })
   .inputValidator(
