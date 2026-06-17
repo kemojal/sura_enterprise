@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
 } from 'drizzle-orm/pg-core'
 
 // ─── better-auth required tables ─────────────────────────────────────────────
@@ -569,4 +570,63 @@ export const stockTransferItems = pgTable('stock_transfer_items', {
     .references(() => stockTransfers.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   quantity: integer('quantity').notNull(),
+})
+
+// ─── Editable-grid: field permissions, record locks, field-level audit ───────
+
+// Owner-configured per-role × per-field edit rights. Missing row → coded
+// default in the registry resolver. Owner is always allowed (never stored).
+export const fieldPermissions = pgTable(
+  'field_permissions',
+  {
+    id: text('id').primaryKey(),
+    shopId: text('shop_id')
+      .notNull()
+      .references(() => shops.id, { onDelete: 'cascade' }),
+    resource: text('resource').notNull(), // 'suppliers' | 'expenses' | …
+    field: text('field').notNull(), // registry field key
+    role: text('role').notNull(), // 'manager' | 'cashier'
+    canEdit: boolean('can_edit').notNull().default(false),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [unique('field_perm_uq').on(t.shopId, t.resource, t.field, t.role)],
+)
+
+// A record is LOCKED for staff editing unless an unlocked=true row exists.
+// Owner edits always bypass the lock.
+export const recordLocks = pgTable(
+  'record_locks',
+  {
+    id: text('id').primaryKey(),
+    shopId: text('shop_id')
+      .notNull()
+      .references(() => shops.id, { onDelete: 'cascade' }),
+    entityType: text('entity_type').notNull(), // 'supplier' | 'expense' | …
+    entityId: text('entity_id').notNull(),
+    unlocked: boolean('unlocked').notNull().default(false),
+    unlockedById: text('unlocked_by_id').references(() => staffMembers.id, {
+      onDelete: 'set null',
+    }),
+    unlockedAt: timestamp('unlocked_at'),
+  },
+  (t) => [unique('record_lock_uq').on(t.shopId, t.entityType, t.entityId)],
+)
+
+// Field-level before→after audit. Actor name denormalized so the trail
+// survives staff deletion.
+export const fieldEdits = pgTable('field_edits', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id')
+    .notNull()
+    .references(() => shops.id, { onDelete: 'cascade' }),
+  staffId: text('staff_id').references(() => staffMembers.id, {
+    onDelete: 'set null',
+  }),
+  actorName: text('actor_name'),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  field: text('field').notNull(),
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
