@@ -22,6 +22,10 @@ export function authorizeFieldEdit(input: AuthzInput): AuthzResult {
   const fieldDef = getField(input.resource, input.field)
   if (!def || !fieldDef) return { ok: false, reason: 'Unknown field' }
 
+  if (fieldDef.displayOnly) {
+    return { ok: false, reason: 'This column is read-only' }
+  }
+
   const parsed = fieldDef.validator.safeParse(input.rawValue)
   if (!parsed.success) return { ok: false, reason: 'Invalid value' }
 

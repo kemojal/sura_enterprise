@@ -65,7 +65,9 @@ export function FieldPermissionsPanel() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {res.fields.map((f) => (
+              {res.fields
+                .filter((f) => !f.displayOnly)
+                .map((f) => (
                 <tr key={f.key}>
                   <td className="py-2 text-sea-ink">{f.label}</td>
                   {ROLES.map((role) => {

@@ -37,7 +37,7 @@ export const listExpenses = createServerFn({ method: 'GET' })
       .limit(100)
   })
 
-const expenseCats = [
+export const expenseCats = [
   'rent',
   'electricity',
   'internet',

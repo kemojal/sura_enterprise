@@ -44,3 +44,18 @@ describe('authorizeFieldEdit', () => {
     expect(r).toMatchObject({ ok: true, parsed: 'Acme' })
   })
 })
+
+describe('authorizeFieldEdit: displayOnly', () => {
+  it('rejects a display-only field even for owner', () => {
+    const r = authorizeFieldEdit({
+      resource: 'expenses',
+      field: 'date',
+      role: 'owner',
+      rawValue: '2026-01-01',
+      entityId: 'e1',
+      perms: [],
+      locks: [],
+    })
+    expect(r).toMatchObject({ ok: false })
+  })
+})

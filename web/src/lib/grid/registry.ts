@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import type { PgTable } from 'drizzle-orm/pg-core'
 
-import { suppliers } from '#/db/schema'
+import { expenses, suppliers } from '#/db/schema'
 import type { Resource, StaffRole } from '#/lib/permissions'
+import { expenseCats } from '#/lib/expenses'
 
-export type CellKind = 'text' | 'number' | 'currency' | 'enum' | 'boolean'
+export type CellKind = 'text' | 'number' | 'currency' | 'enum' | 'boolean' | 'date'
 export type NonOwnerRole = Exclude<StaffRole, 'owner'>
 
 export interface FieldDef {
@@ -13,6 +14,8 @@ export interface FieldDef {
   kind: CellKind
   validator: z.ZodType // validates + normalizes the incoming value
   financial?: boolean
+  displayOnly?: boolean // shown in the grid but never editable (e.g. timestamps)
+  options?: ReadonlyArray<{ value: string; label: string }> // for enum fields
   editableByDefault?: Partial<Record<NonOwnerRole, boolean>>
 }
 
@@ -39,6 +42,31 @@ const optionalEmail = z
   .email()
   .or(z.literal(''))
   .transform((v) => (v ? v : null))
+
+const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
+  rent: 'Rent',
+  electricity: 'Electricity',
+  internet: 'Internet',
+  salary: 'Salary',
+  supplier_payment: 'Supplier Payment',
+  transport: 'Transport',
+  maintenance: 'Maintenance',
+  packaging: 'Packaging',
+  misc: 'Miscellaneous',
+}
+
+const EXPENSE_CATEGORY_OPTIONS = expenseCats.map((v) => ({
+  value: v,
+  label: EXPENSE_CATEGORY_LABELS[v] ?? v,
+}))
+
+// Coerce a number or numeric string to a non-negative 2-decimal string
+// (the amount column is a Postgres numeric stored as a string).
+const currency = z
+  .coerce.number()
+  .finite()
+  .nonnegative()
+  .transform((n) => n.toFixed(2))
 
 export const REGISTRY: Record<string, ResourceDef> = {
   suppliers: {
@@ -81,6 +109,28 @@ export const REGISTRY: Record<string, ResourceDef> = {
         kind: 'text',
         validator: optionalText,
         editableByDefault: { manager: true },
+      },
+    ],
+  },
+  expenses: {
+    resource: 'expenses',
+    entityType: 'expense',
+    permission: 'expenses',
+    table: expenses,
+    fields: [
+      { key: 'date', label: 'Date', kind: 'date', validator: z.any(), displayOnly: true },
+      {
+        key: 'category', label: 'Category', kind: 'enum',
+        validator: z.enum(expenseCats), options: EXPENSE_CATEGORY_OPTIONS,
+        editableByDefault: { manager: true },
+      },
+      {
+        key: 'description', label: 'Description', kind: 'text',
+        validator: optionalText, editableByDefault: { manager: true },
+      },
+      {
+        key: 'amount', label: 'Amount', kind: 'currency',
+        validator: currency, financial: true, editableByDefault: { manager: false },
       },
     ],
   },
