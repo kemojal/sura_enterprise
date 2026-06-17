@@ -66,15 +66,15 @@ export const updateRecordField = createServerFn({ method: 'POST' })
     })
     if (!decision.ok) throw new Error(decision.reason)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const table = def.table as any
 
     return db.transaction(async (tx) => {
-      const [current] = await tx
+      const found = await tx
         .select()
         .from(table)
         .where(and(eq(table.id, data.id), eq(table.shopId, ctx.shopId)))
         .limit(1)
+      const current = found[0] as Record<string, unknown> | undefined
       if (!current) throw new Error('Record not found')
 
       const oldValue = current[data.field] ?? null

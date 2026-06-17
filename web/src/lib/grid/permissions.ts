@@ -27,7 +27,7 @@ export function resolveFieldPermission(
     (p) => p.resource === resource && p.field === field && p.role === role,
   )
   if (row) return row.canEdit
-  return fieldDef.editableByDefault?.[role as 'manager' | 'cashier'] ?? false
+  return fieldDef.editableByDefault?.[role] ?? false
 }
 
 // A record is locked unless an explicit unlocked=true row exists for it.

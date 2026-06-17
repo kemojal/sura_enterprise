@@ -91,5 +91,5 @@ export function getResource(resource: string): ResourceDef | undefined {
 }
 
 export function getField(resource: string, field: string): FieldDef | undefined {
-  return REGISTRY[resource]?.fields.find((f) => f.key === field)
+  return getResource(resource)?.fields.find((f) => f.key === field)
 }

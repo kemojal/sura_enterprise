@@ -1,9 +1,8 @@
-import {
-  DataEditor,
-  GridCellKind,
-  type EditableGridCell,
-  type GridCell,
-  type Item,
+import { DataEditor, GridCellKind } from '@glideapps/glide-data-grid'
+import type {
+  EditableGridCell,
+  GridCell,
+  Item,
 } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 import { useCallback } from 'react'
