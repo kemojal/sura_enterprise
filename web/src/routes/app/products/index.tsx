@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { z } from 'zod'
 
@@ -80,6 +80,14 @@ export function ProductsContent({
   const role = data.role
   const isOwner = role === 'owner'
   const [deleting, setDeleting] = useState<string | null>(null)
+
+  // Re-sync grid state when the loader returns new data (search/category
+  // filter change, or a refetch). Inline edits don't refetch, so optimistic
+  // row state is preserved between filter changes.
+  useEffect(() => {
+    setRows(data.rows)
+    setLocks(data.locks)
+  }, [data.rows, data.locks])
 
   const optionsByField = useMemo(
     () => ({

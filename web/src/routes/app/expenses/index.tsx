@@ -4,7 +4,7 @@ import {
   redirect,
   useRouter,
 } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { z } from 'zod'
 
@@ -75,6 +75,13 @@ export function ExpensesContent({
   const [rows, setRows] = useState<ExpenseRow[]>(data.rows)
   const perms = data.perms as PermRow[]
   const [locks, setLocks] = useState<LockRow[]>(data.locks as LockRow[])
+
+  // Re-sync grid state when the loader returns new data (date-filter change or
+  // refetch). Inline edits don't refetch, so optimistic state is preserved.
+  useEffect(() => {
+    setRows(data.rows)
+    setLocks(data.locks)
+  }, [data.rows, data.locks])
   const role = data.role
   const isOwner = role === 'owner'
   const total = rows.reduce((sum, e) => sum + Number(e.amount), 0)
