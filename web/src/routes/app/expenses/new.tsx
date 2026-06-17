@@ -3,7 +3,8 @@ import { z } from 'zod'
 
 import { ExpenseForm } from '#/components/forms/expense-form'
 import { RouteDialog } from '#/components/route-dialog'
-import { listExpenses } from '#/lib/expenses'
+import { expensesGridQuery } from '#/lib/queries'
+import { useRefresh } from '#/lib/use-refresh'
 
 import { can } from '#/lib/permissions'
 import { ExpensesContent } from './index'
@@ -17,29 +18,36 @@ export const Route = createFileRoute('/app/expenses/new')({
     to: z.string().optional(),
   }),
   loaderDeps: ({ search }) => search,
-  loader: ({ deps }) => listExpenses({ data: deps }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(expensesGridQuery(deps)),
   component: NewExpensePage,
 })
 
 function NewExpensePage() {
-  const expenses = Route.useLoaderData()
+  const data = Route.useLoaderData()
   const { from, to } = Route.useSearch()
   const navigate = Route.useNavigate()
   const router = useRouter()
+  const refresh = useRefresh()
 
   function close() {
     router.navigate({ to: '/app/expenses' })
   }
 
+  async function saved() {
+    await refresh()
+    close()
+  }
+
   return (
     <ExpensesContent
-      expenses={expenses}
+      data={data}
       from={from}
       to={to}
       onFilter={(values) => navigate({ search: (s) => ({ ...s, ...values }) })}
     >
       <RouteDialog title="Add expense" onClose={close}>
-        <ExpenseForm onCancel={close} onSaved={close} />
+        <ExpenseForm onCancel={close} onSaved={saved} />
       </RouteDialog>
     </ExpensesContent>
   )
