@@ -78,6 +78,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <div id="portal" style={{ position: 'fixed', top: 0, left: 0, zIndex: 1000 }} />
         {children}
         {AppDevtools && (
           <Suspense fallback={null}>
