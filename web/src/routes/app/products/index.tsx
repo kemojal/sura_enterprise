@@ -1,14 +1,21 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { z } from 'zod'
 
 import { Button } from '#/components/ui/button'
 import { ExportButton } from '#/components/export-button'
 import { Input } from '#/components/ui/input'
-import { deleteProduct, listCategories, listProducts } from '#/lib/products'
-
-type CategoryOption = { id: string; name: string }
+import { DataGrid } from '#/components/grid/data-grid'
+import { RecordHistory } from '#/components/grid/record-history'
+import { REGISTRY } from '#/lib/grid/registry'
+import { isLocked, resolveFieldPermission } from '#/lib/grid/permissions'
+import type { LockRow, PermRow } from '#/lib/grid/permissions'
+import { setRecordLock, updateRecordField } from '#/lib/grid/server'
+import { deleteProduct } from '#/lib/products'
+import type { listProductsGrid } from '#/lib/products'
+import { productsGridQuery } from '#/lib/queries'
+import { useRefresh } from '#/lib/use-refresh'
 
 export const Route = createFileRoute('/app/products/')({
   validateSearch: z.object({
@@ -19,25 +26,25 @@ export const Route = createFileRoute('/app/products/')({
     search: search.search,
     categoryId: search.categoryId,
   }),
-  loader: async ({ deps }) => {
-    const [products, categories] = await Promise.all([
-      listProducts({ data: { search: deps.search, categoryId: deps.categoryId } }),
-      listCategories(),
-    ])
-    return { products, categories }
-  },
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(
+      productsGridQuery({ search: deps.search, categoryId: deps.categoryId }),
+    ),
   component: ProductsPage,
 })
 
+const FIELDS = REGISTRY.products.fields
+
+type GridData = Awaited<ReturnType<typeof listProductsGrid>>
+type ProductRow = GridData['rows'][number]
+
 function ProductsPage() {
-  const { products, categories } = Route.useLoaderData()
+  const data = Route.useLoaderData()
   const { search, categoryId } = Route.useSearch()
   const navigate = Route.useNavigate()
-
   return (
     <ProductsContent
-      products={products}
-      categories={categories}
+      data={data}
       search={search}
       categoryId={categoryId}
       onSearch={(value) =>
@@ -51,16 +58,14 @@ function ProductsPage() {
 }
 
 export function ProductsContent({
-  products,
-  categories,
+  data,
   search,
   categoryId,
   onSearch,
   onCategoryChange,
   children,
 }: {
-  products: Awaited<ReturnType<typeof listProducts>>
-  categories?: CategoryOption[]
+  data: GridData
   search?: string
   categoryId?: string
   onSearch: (value: string) => void
@@ -68,22 +73,133 @@ export function ProductsContent({
   children?: ReactNode
 }) {
   const router = useRouter()
+  const refresh = useRefresh()
+  const [rows, setRows] = useState<ProductRow[]>(data.rows)
+  const perms = data.perms as PermRow[]
+  const [locks, setLocks] = useState<LockRow[]>(data.locks as LockRow[])
+  const role = data.role
+  const isOwner = role === 'owner'
   const [deleting, setDeleting] = useState<string | null>(null)
+
+  const optionsByField = useMemo(
+    () => ({
+      categoryId: [
+        { value: '', label: '— None —' },
+        ...data.categories.map((c) => ({ value: c.id, label: c.name })),
+      ],
+    }),
+    [data.categories],
+  )
+
+  const isEditable = useMemo(
+    () => (rowIndex: number, fieldKey: string) => {
+      const rec = rows[rowIndex] as ProductRow | undefined
+      if (!rec) return false
+      if (!resolveFieldPermission(perms, 'products', fieldKey, role)) return false
+      if (role !== 'owner' && isLocked(locks, 'product', rec.id)) return false
+      return true
+    },
+    [rows, perms, locks, role],
+  )
+
+  async function onEdit(rowIndex: number, fieldKey: string, value: unknown) {
+    const rec = rows[rowIndex]
+    try {
+      const updated = (await updateRecordField({
+        data: { resource: 'products', id: rec.id, field: fieldKey, value },
+      })) as Partial<ProductRow>
+      setRows((prev) =>
+        prev.map((r, i) => {
+          if (i !== rowIndex) return r
+          const merged = { ...r, ...updated }
+          // categoryName is a join alias absent from the base row — keep the
+          // grid label in sync when the category id changes.
+          if ('categoryId' in updated) {
+            merged.categoryName =
+              data.categories.find((c) => c.id === merged.categoryId)?.name ?? null
+          }
+          return merged
+        }),
+      )
+      return true
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Edit rejected')
+      setRows((prev) => [...prev])
+      return false
+    }
+  }
+
+  async function toggleLock(id: string, currentlyLocked: boolean) {
+    // A record is "locked" unless an unlocked=true row exists (see isLocked).
+    // Unlocking a locked row writes unlocked=true — new value equals
+    // currentlyLocked. Not a typo; do not invert.
+    try {
+      await setRecordLock({
+        data: { entityType: 'product', entityId: id, unlocked: currentlyLocked },
+      })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Could not change lock')
+      return
+    }
+    setLocks((prev) => {
+      const rest = prev.filter(
+        (l) => !(l.entityType === 'product' && l.entityId === id),
+      )
+      return [
+        ...rest,
+        { entityType: 'product', entityId: id, unlocked: currentlyLocked },
+      ]
+    })
+    router.invalidate()
+  }
 
   async function handleDelete(id: string) {
     setDeleting(id)
     await deleteProduct({ data: { id } })
     setDeleting(null)
-    router.invalidate()
+    setRows((prev) => prev.filter((r) => r.id !== id))
+    refresh()
   }
+
+  const fallbackTable = (
+    <div className="app-card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left">
+          <tr>
+            {FIELDS.map((f) => (
+              <th key={f.key} className="px-4 py-3 font-medium">
+                {f.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((p) => (
+            <tr key={p.id} className="hover:bg-sea-ink/[0.04]">
+              {FIELDS.map((f) => (
+                <td key={f.key} className="px-4 py-3 text-sea-ink-soft">
+                  {f.key === 'categoryId'
+                    ? (p.categoryName ?? '—')
+                    : ((p[f.key as keyof ProductRow] as string | number | null) ??
+                      '—')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Products</h2>
+        <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">
+          Products
+        </h2>
         <div className="flex items-center gap-2">
           <ExportButton
-            rows={products}
+            rows={rows}
             filename="products"
             columns={[
               { header: 'Name', value: (p) => p.name },
@@ -123,14 +239,14 @@ export function ProductsContent({
           onChange={(e) => onSearch(e.target.value)}
           className="max-w-xs"
         />
-        {categories && categories.length > 0 && onCategoryChange && (
+        {data.categories.length > 0 && onCategoryChange && (
           <select
             value={categoryId ?? ''}
             onChange={(e) => onCategoryChange(e.target.value)}
             className="border border-line rounded-md px-3 py-2 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
           >
             <option value="">All categories</option>
-            {categories.map((c) => (
+            {data.categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -139,149 +255,101 @@ export function ProductsContent({
         )}
       </div>
 
-      {products.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="text-center py-16 text-sea-ink-soft">
           No products yet.{' '}
-          <Link
-            to="/app/products/new"
-            className="text-lagoon-deep hover:underline"
-          >
+          <Link to="/app/products/new" className="text-lagoon-deep hover:underline">
             Add your first product.
           </Link>
         </div>
       ) : (
-        <div className="app-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left">
-              <tr>
-                <th className="px-4 py-3 font-medium w-10"></th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Category</th>
-                <th className="px-4 py-3 font-medium text-right">Buy</th>
-                <th className="px-4 py-3 font-medium text-right">Sell</th>
-                <th className="px-4 py-3 font-medium text-right">Margin</th>
-                <th className="px-4 py-3 font-medium text-right">Stock</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {products.map((p) => {
-                const isLow =
-                  p.stockQty > 0 && p.stockQty <= p.lowStockThreshold
-                const isOut = p.stockQty === 0
+        <>
+          <p className="text-xs text-sea-ink-soft">
+            Stock is read-only here — adjust it from a product's Adjust action so
+            the stock ledger stays accurate.
+          </p>
+          <DataGrid
+            fields={FIELDS}
+            rows={rows}
+            isEditable={isEditable}
+            onEdit={onEdit}
+            optionsByField={optionsByField}
+            fallback={fallbackTable}
+          />
+
+          <div className="app-card p-4">
+            <p className="text-sm font-semibold text-sea-ink mb-2">
+              Product tools
+            </p>
+            <ul className="divide-y divide-line text-sm">
+              {rows.map((p) => {
+                const locked = isLocked(locks, 'product', p.id)
                 return (
-                  <tr key={p.id} className="hover:bg-sea-ink/[0.04]">
-                    <td className="px-3 py-2">
-                      {p.imageUrl ? (
-                        <img
-                          src={p.imageUrl}
-                          alt={p.name}
-                          className="w-9 h-9 rounded object-cover border border-line"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded bg-sea-ink/[0.05] border border-line flex items-center justify-center text-sea-ink-soft text-xs">
-                          —
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sea-ink font-medium">
-                      {p.name}
-                    </td>
-                    <td className="px-4 py-3 text-sea-ink-soft">
-                      {p.categoryName ?? '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sea-ink-soft">
-                      {p.buyingPrice}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sea-ink-soft">
-                      {p.sellingPrice}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {(() => {
-                        const buy = Number(p.buyingPrice)
-                        const sell = Number(p.sellingPrice)
-                        const margin = sell - buy
-                        // Margin % is profit over revenue (matches reports)
-                        const marginPct = sell > 0 ? (margin / sell) * 100 : 0
-                        return (
-                          <span
-                            className={
-                              margin < 0
-                                ? 'text-red-600'
-                                : margin === 0
-                                  ? 'text-sea-ink-soft'
-                                  : 'text-palm'
-                            }
-                          >
-                            {margin.toFixed(2)}
-                            {sell > 0 && (
-                              <span className="text-xs text-sea-ink-soft ml-1">
-                                ({marginPct.toFixed(0)}%)
-                              </span>
-                            )}
-                          </span>
-                        )
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                          isOut
-                            ? 'bg-red-100 text-red-700'
-                            : isLow
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-palm/12 text-palm'
-                        }`}
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between py-2 gap-3"
+                  >
+                    <span className="text-sea-ink truncate">{p.name}</span>
+                    <span className="flex items-center gap-3 shrink-0 text-xs">
+                      <Link
+                        to="/app/products/$productId/variants"
+                        params={{ productId: p.id }}
+                        className="text-sea-ink-soft hover:text-sea-ink"
                       >
-                        {isOut ? 'Out' : p.stockQty}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          to="/app/products/$productId/variants"
-                          params={{ productId: p.id }}
-                          className="text-sea-ink-soft hover:text-sea-ink text-xs"
-                        >
-                          Variants
-                        </Link>
-                        <Link
-                          to="/app/products/$productId/ledger"
-                          params={{ productId: p.id }}
-                          className="text-sea-ink-soft hover:text-sea-ink text-xs"
-                        >
-                          History
-                        </Link>
-                        <Link
-                          to="/app/products/$productId/adjust"
-                          params={{ productId: p.id }}
-                          className="text-sea-ink-soft hover:text-sea-ink text-xs"
-                        >
-                          Adjust
-                        </Link>
-                        <Link
-                          to="/app/products/$productId/edit"
-                          params={{ productId: p.id }}
-                          className="text-lagoon-deep hover:underline text-xs"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(p.id)}
-                          disabled={deleting === p.id}
-                          className="text-red-500 hover:underline text-xs disabled:opacity-50"
-                        >
-                          {deleting === p.id ? '…' : 'Delete'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                        Variants
+                      </Link>
+                      <Link
+                        to="/app/products/$productId/ledger"
+                        params={{ productId: p.id }}
+                        className="text-sea-ink-soft hover:text-sea-ink"
+                      >
+                        Ledger
+                      </Link>
+                      <Link
+                        to="/app/products/$productId/adjust"
+                        params={{ productId: p.id }}
+                        className="text-sea-ink-soft hover:text-sea-ink"
+                      >
+                        Adjust
+                      </Link>
+                      <Link
+                        to="/app/products/$productId/edit"
+                        params={{ productId: p.id }}
+                        className="text-lagoon-deep hover:underline"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        disabled={deleting === p.id}
+                        className="text-red-500 hover:underline disabled:opacity-50"
+                      >
+                        {deleting === p.id ? '…' : 'Delete'}
+                      </button>
+                      {isOwner && (
+                        <>
+                          <RecordHistory
+                            entityType="product"
+                            entityId={p.id}
+                            label={p.name}
+                          />
+                          <button
+                            onClick={() => toggleLock(p.id, locked)}
+                            className="text-lagoon-deep hover:underline"
+                          >
+                            {locked ? 'Unlock' : 'Lock'}
+                          </button>
+                        </>
+                      )}
+                    </span>
+                  </li>
                 )
               })}
-            </tbody>
-          </table>
-        </div>
+            </ul>
+          </div>
+        </>
       )}
+
       {children}
     </div>
   )

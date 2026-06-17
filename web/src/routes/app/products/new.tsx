@@ -4,7 +4,9 @@ import { z } from 'zod'
 
 import { ProductForm } from '#/components/product-form'
 import { RouteDialog } from '#/components/route-dialog'
-import { createProduct, listCategories, listProducts } from '#/lib/products'
+import { createProduct } from '#/lib/products'
+import { productsGridQuery } from '#/lib/queries'
+import { useRefresh } from '#/lib/use-refresh'
 
 import { can } from '#/lib/permissions'
 import { ProductsContent } from './index'
@@ -16,21 +18,17 @@ export const Route = createFileRoute('/app/products/new')({
   },
   validateSearch: z.object({ search: z.string().optional() }),
   loaderDeps: ({ search }) => ({ search: search.search }),
-  loader: async ({ deps }) => {
-    const [products, categories] = await Promise.all([
-      listProducts({ data: { search: deps.search } }),
-      listCategories(),
-    ])
-    return { products, categories }
-  },
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(productsGridQuery({ search: deps.search })),
   component: NewProductPage,
 })
 
 function NewProductPage() {
-  const { products, categories } = Route.useLoaderData()
+  const data = Route.useLoaderData()
   const { search } = Route.useSearch()
   const navigate = Route.useNavigate()
   const router = useRouter()
+  const refresh = useRefresh()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -40,13 +38,13 @@ function NewProductPage() {
 
   return (
     <ProductsContent
-      products={products}
+      data={data}
       search={search}
       onSearch={(value) => navigate({ search: { search: value || undefined } })}
     >
       <RouteDialog title="Add product" onClose={close}>
         <ProductForm
-          categories={categories}
+          categories={data.categories}
           loading={loading}
           error={error}
           onCancel={close}
@@ -55,7 +53,8 @@ function NewProductPage() {
             setError('')
             try {
               await createProduct({ data: values })
-              await close()
+              await refresh()
+              close()
             } catch (err: unknown) {
               setError(err instanceof Error ? err.message : 'Failed to save')
             } finally {
