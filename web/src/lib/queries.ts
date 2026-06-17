@@ -1,7 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { listCustomers } from './customers'
-import { listExpenses, listExpensesGrid } from './expenses'
+import { listExpensesGrid } from './expenses'
 import { listCategories, listProducts } from './products'
 import { listSales } from './sales'
 import { listStaff } from './staff'
@@ -27,12 +27,6 @@ export const staffListQuery = () =>
   queryOptions({
     queryKey: ['staff', 'list'],
     queryFn: () => listStaff(),
-  })
-
-export const expensesListQuery = (deps: { from?: string; to?: string }) =>
-  queryOptions({
-    queryKey: ['expenses', 'list', deps],
-    queryFn: () => listExpenses({ data: deps }),
   })
 
 export const expensesGridQuery = (deps: { from?: string; to?: string }) =>
