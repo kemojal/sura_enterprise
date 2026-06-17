@@ -16,6 +16,8 @@ export interface GlideGridProps {
   rows: Array<Record<string, unknown>>
   isEditable: (rowIndex: number, fieldKey: string) => boolean
   onEdit: (rowIndex: number, fieldKey: string, value: unknown) => Promise<boolean>
+  // Runtime-loaded dropdown options for relation fields, keyed by field.key.
+  optionsByField?: Record<string, ReadonlyArray<{ value: string; label: string }>>
 }
 
 const lockedTheme = { bgCell: '#f3f4f6', textDark: '#9ca3af' }
@@ -29,6 +31,7 @@ export default function GlideGrid({
   rows,
   isEditable,
   onEdit,
+  optionsByField,
 }: GlideGridProps) {
   const columns = buildColumns(fields).map((c) => ({
     id: c.id,
@@ -39,7 +42,12 @@ export default function GlideGrid({
   const getCellContent = useCallback(
     ([col, row]: Item): GridCell => {
       const field = fields[col]
-      const m = cellModel(field, rows[row]?.[field.key], isEditable(row, field.key))
+      const m = cellModel(
+        field,
+        rows[row]?.[field.key],
+        isEditable(row, field.key),
+        optionsByField?.[field.key],
+      )
       // m.readonly folds in permission/lock AND display-only columns, so it is
       // the single source of truth for client-side editability.
       const editable = !m.readonly
@@ -84,7 +92,7 @@ export default function GlideGrid({
         themeOverride,
       }
     },
-    [fields, rows, isEditable],
+    [fields, rows, isEditable, optionsByField],
   )
 
   const onCellEdited = useCallback(
