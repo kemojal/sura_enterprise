@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { useRefresh } from '#/lib/use-refresh'
 import { useState } from 'react'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 
@@ -24,7 +25,7 @@ export const Route = createFileRoute('/app/products/$productId/variants')({
 function VariantsPage() {
   const { product, variants } = Route.useLoaderData()
   const { productId } = Route.useParams()
-  const router = useRouter()
+  const refresh = useRefresh()
 
   const [name, setName] = useState('')
   const [buyingPrice, setBuyingPrice] = useState('')
@@ -39,7 +40,7 @@ function VariantsPage() {
     setError('')
     try {
       await fn()
-      router.invalidate()
+      refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Action failed')
     } finally {

@@ -71,27 +71,27 @@ function ReturnPage() {
         <Link
           to="/app/sales/$saleId/receipt"
           params={{ saleId }}
-          className="text-gray-400 hover:text-gray-700"
+          className="text-sea-ink-soft hover:text-sea-ink"
         >
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Return / Refund</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Return / Refund</h2>
+          <p className="text-sm text-sea-ink-soft mt-0.5">
             Receipt #{saleId.slice(-8).toUpperCase()} · Status: {sale.status}
           </p>
         </div>
       </div>
 
       {!anyReturnable ? (
-        <div className="bg-white border rounded-xl p-8 text-center text-gray-400">
+        <div className="app-card p-8 text-center text-sea-ink-soft">
           All items on this sale have already been returned.
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="bg-white border rounded-xl overflow-hidden">
+          <div className="app-card overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-left">
+              <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Item</th>
                   <th className="px-4 py-3 font-medium text-center">Sold</th>
@@ -99,22 +99,22 @@ function ReturnPage() {
                   <th className="px-4 py-3 font-medium text-center">Return Qty</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-line">
                 {items.map((i) => {
                   const max = i.returnableQty
                   const qty = returnQty[i.saleItemId] ?? 0
                   return (
                     <tr key={i.saleItemId} className={max === 0 ? 'opacity-40' : ''}>
-                      <td className="px-4 py-3 text-gray-900">
+                      <td className="px-4 py-3 text-sea-ink">
                         {i.productName ?? 'Item'}
-                        <span className="text-gray-400 text-xs ml-1">
+                        <span className="text-sea-ink-soft text-xs ml-1">
                           @ {i.unitPrice}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center text-gray-600">
+                      <td className="px-4 py-3 text-center text-sea-ink-soft">
                         {i.quantity}
                       </td>
-                      <td className="px-4 py-3 text-center text-gray-600">
+                      <td className="px-4 py-3 text-center text-sea-ink-soft">
                         {max}
                       </td>
                       <td className="px-4 py-3">
@@ -123,7 +123,7 @@ function ReturnPage() {
                             type="button"
                             disabled={max === 0}
                             onClick={() => setQty(i.saleItemId, qty - 1, max)}
-                            className="w-6 h-6 rounded border text-gray-600 hover:bg-gray-100 text-sm disabled:opacity-30"
+                            className="w-6 h-6 rounded border border-line text-sea-ink-soft hover:bg-sea-ink/[0.04] text-sm disabled:opacity-30"
                           >
                             −
                           </button>
@@ -136,13 +136,13 @@ function ReturnPage() {
                             onChange={(e) =>
                               setQty(i.saleItemId, Number(e.target.value), max)
                             }
-                            className="w-12 text-center border rounded py-1 text-sm"
+                            className="w-12 text-center border border-line rounded py-1 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
                           />
                           <button
                             type="button"
                             disabled={max === 0}
                             onClick={() => setQty(i.saleItemId, qty + 1, max)}
-                            className="w-6 h-6 rounded border text-gray-600 hover:bg-gray-100 text-sm disabled:opacity-30"
+                            className="w-6 h-6 rounded border border-line text-sea-ink-soft hover:bg-sea-ink/[0.04] text-sm disabled:opacity-30"
                           >
                             +
                           </button>
@@ -165,9 +165,9 @@ function ReturnPage() {
             />
           </div>
 
-          <div className="bg-gray-50 border rounded-xl p-4 flex items-center justify-between">
-            <span className="text-sm text-gray-600">Refund amount</span>
-            <span className="text-lg font-bold text-gray-900">
+          <div className="app-card border-line rounded-xl p-4 flex items-center justify-between">
+            <span className="text-sm text-sea-ink-soft">Refund amount</span>
+            <span className="text-lg font-bold text-sea-ink">
               {refundTotal.toFixed(2)}
             </span>
           </div>

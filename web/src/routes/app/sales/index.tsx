@@ -4,7 +4,8 @@ import { z } from 'zod'
 
 import { Button } from '#/components/ui/button'
 import { ExportButton } from '#/components/export-button'
-import { listSales } from '#/lib/sales'
+import type { listSales } from '#/lib/sales'
+import { salesListQuery } from '#/lib/queries'
 
 export const Route = createFileRoute('/app/sales/')({
   validateSearch: z.object({
@@ -12,7 +13,8 @@ export const Route = createFileRoute('/app/sales/')({
     to: z.string().optional(),
   }),
   loaderDeps: ({ search }) => search,
-  loader: ({ deps }) => listSales({ data: deps }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(salesListQuery(deps)),
   component: SalesPage,
 })
 
@@ -53,13 +55,18 @@ export function SalesContent({
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Sales</h2>
+        <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">
+          Sales
+        </h2>
         <div className="flex items-center gap-2">
           <ExportButton
             rows={sales}
             filename="sales"
             columns={[
-              { header: 'Date', value: (s) => new Date(s.createdAt).toLocaleString() },
+              {
+                header: 'Date',
+                value: (s) => new Date(s.createdAt).toLocaleString(),
+              },
               { header: 'Customer', value: (s) => s.customerName ?? '' },
               { header: 'Cashier', value: (s) => s.cashierName ?? '' },
               { header: 'Method', value: (s) => methodLabel[s.paymentMethod] },
@@ -77,25 +84,25 @@ export function SalesContent({
       <div className="flex gap-3 items-center">
         <input
           type="date"
-          className="border rounded-md px-3 py-1.5 text-sm"
+          className="border border-line rounded-md px-3 py-1.5 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
           value={from ?? ''}
           onChange={(e) => onFilter({ from: e.target.value || undefined })}
         />
-        <span className="text-gray-400 text-sm">to</span>
+        <span className="text-sea-ink-soft text-sm">to</span>
         <input
           type="date"
-          className="border rounded-md px-3 py-1.5 text-sm"
+          className="border border-line rounded-md px-3 py-1.5 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
           value={to ?? ''}
           onChange={(e) => onFilter({ to: e.target.value || undefined })}
         />
       </div>
 
       {sales.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">No sales yet.</div>
+        <div className="text-center py-16 text-sea-ink-soft">No sales yet.</div>
       ) : (
-        <div className="overflow-hidden rounded-md border bg-white">
+        <div className="app-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-left">
+            <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Customer</th>
@@ -107,25 +114,25 @@ export function SalesContent({
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-line">
               {sales.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                <tr key={s.id} className="hover:bg-sea-ink/[0.04]">
+                  <td className="px-4 py-3 text-sea-ink-soft whitespace-nowrap">
                     {new Date(s.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-gray-700">
+                  <td className="px-4 py-3 text-sea-ink">
                     {s.customerName ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td className="px-4 py-3 text-sea-ink-soft">
                     {s.cashierName ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td className="px-4 py-3 text-sea-ink-soft">
                     {methodLabel[s.paymentMethod]}
                   </td>
-                  <td className="px-4 py-3 text-right font-medium text-gray-900">
+                  <td className="px-4 py-3 text-right font-medium text-sea-ink">
                     {s.totalAmount}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-600">
+                  <td className="px-4 py-3 text-right text-sea-ink-soft">
                     {s.amountPaid}
                   </td>
                   <td className="px-4 py-3">
@@ -133,7 +140,7 @@ export function SalesContent({
                       className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
                         s.status === 'credit'
                           ? 'bg-amber-100 text-amber-700'
-                          : 'bg-green-100 text-green-700'
+                          : 'bg-palm/12 text-palm'
                       }`}
                     >
                       {s.status}
@@ -143,7 +150,7 @@ export function SalesContent({
                     <Link
                       to="/app/sales/$saleId/receipt"
                       params={{ saleId: s.id }}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-lagoon-deep hover:underline"
                     >
                       Receipt
                     </Link>

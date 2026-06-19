@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db } from '#/db/index'
 import { customers, heldSales } from '#/db/schema'
 import { getShopCtx } from './context'
+import type { ShopContext } from './context'
 import { nanoid } from './nanoid'
 
 const heldItemSchema = z.object({
@@ -15,9 +16,7 @@ const heldItemSchema = z.object({
   quantity: z.number().int().min(1),
 })
 
-export const listHeldSales = createServerFn({ method: 'GET' }).handler(async () => {
-  const request = getRequest()
-  const { shopId } = await getShopCtx(request.headers)
+export async function _listHeldSalesCore(ctx: ShopContext) {
   return db
     .select({
       id: heldSales.id,
@@ -29,10 +28,14 @@ export const listHeldSales = createServerFn({ method: 'GET' }).handler(async () 
     })
     .from(heldSales)
     .leftJoin(customers, eq(heldSales.customerId, customers.id))
-    .where(eq(heldSales.shopId, shopId))
+    .where(eq(heldSales.shopId, ctx.shopId))
     .orderBy(desc(heldSales.createdAt))
     .limit(50)
-})
+}
+
+export const listHeldSales = createServerFn({ method: 'GET' }).handler(
+  async () => _listHeldSalesCore(await getShopCtx(getRequest().headers)),
+)
 
 export const holdSale = createServerFn({ method: 'POST' })
   .inputValidator(

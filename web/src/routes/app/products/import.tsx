@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { useRefresh } from '#/lib/use-refresh'
 import { useRef, useState } from 'react'
 import { ArrowLeft, Upload, CheckCircle2, AlertCircle } from 'lucide-react'
 
@@ -65,7 +66,7 @@ function validate(raw: Record<string, string>[]): ParsedRow[] {
 }
 
 function ImportPage() {
-  const router = useRouter()
+  const refresh = useRefresh()
   const fileRef = useRef<HTMLInputElement>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [fileName, setFileName] = useState('')
@@ -119,7 +120,7 @@ function ImportPage() {
         },
       })
       setResult(res)
-      router.invalidate()
+      refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Import failed')
     } finally {
@@ -130,13 +131,13 @@ function ImportPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/app/products" className="text-gray-400 hover:text-gray-700">
+        <Link to="/app/products" className="text-sea-ink-soft hover:text-sea-ink">
           <ArrowLeft size={18} />
         </Link>
-        <h2 className="text-xl font-semibold text-gray-900">Import Products</h2>
+        <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Import Products</h2>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+      <div className="bg-lagoon/10 border border-lagoon/20 rounded-xl p-4 text-sm text-lagoon-deep">
         Upload a CSV with columns: <strong>Name</strong>, Category, Buying Price,
         Selling Price, Stock, Low Stock Alert, Barcode. Products matching an
         existing name are updated; others are created. Tip: export your products
@@ -156,7 +157,7 @@ function ImportPage() {
           <Upload size={15} className="mr-1.5" />
           Choose CSV
         </Button>
-        {fileName && <span className="text-sm text-gray-500">{fileName}</span>}
+        {fileName && <span className="text-sm text-sea-ink-soft">{fileName}</span>}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -175,7 +176,7 @@ function ImportPage() {
       {rows.length > 0 && !result && (
         <>
           <div className="flex items-center gap-4 text-sm">
-            <span className="flex items-center gap-1.5 text-green-700">
+            <span className="flex items-center gap-1.5 text-palm">
               <CheckCircle2 size={15} />
               {validRows.length} valid
             </span>
@@ -187,9 +188,9 @@ function ImportPage() {
             )}
           </div>
 
-          <div className="border rounded-xl overflow-hidden max-h-96 overflow-y-auto">
+          <div className="app-card overflow-hidden max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-left sticky top-0">
+              <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left sticky top-0">
                 <tr>
                   <th className="px-3 py-2 font-medium">Name</th>
                   <th className="px-3 py-2 font-medium">Category</th>
@@ -199,27 +200,27 @@ function ImportPage() {
                   <th className="px-3 py-2 font-medium">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-line">
                 {rows.map((r, i) => (
                   <tr key={i} className={r._error ? 'bg-red-50' : ''}>
-                    <td className="px-3 py-2 text-gray-900">{r.name || '—'}</td>
-                    <td className="px-3 py-2 text-gray-500">
+                    <td className="px-3 py-2 text-sea-ink">{r.name || '—'}</td>
+                    <td className="px-3 py-2 text-sea-ink-soft">
                       {r.categoryName ?? '—'}
                     </td>
-                    <td className="px-3 py-2 text-right text-gray-600">
+                    <td className="px-3 py-2 text-right text-sea-ink-soft">
                       {r.buyingPrice || '—'}
                     </td>
-                    <td className="px-3 py-2 text-right text-gray-600">
+                    <td className="px-3 py-2 text-right text-sea-ink-soft">
                       {r.sellingPrice || '—'}
                     </td>
-                    <td className="px-3 py-2 text-right text-gray-600">
+                    <td className="px-3 py-2 text-right text-sea-ink-soft">
                       {r.stockQty}
                     </td>
                     <td className="px-3 py-2">
                       {r._error ? (
                         <span className="text-xs text-red-600">{r._error}</span>
                       ) : (
-                        <span className="text-xs text-green-600">OK</span>
+                        <span className="text-xs text-palm">OK</span>
                       )}
                     </td>
                   </tr>

@@ -92,7 +92,10 @@ function NewPurchaseOrderPage() {
           })),
         },
       })
-      await router.navigate({ to: '/app/purchase-orders/$poId', params: { poId: id } })
+      await router.navigate({
+        to: '/app/purchase-orders/$poId',
+        params: { poId: id },
+      })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create order')
     } finally {
@@ -102,30 +105,34 @@ function NewPurchaseOrderPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900">New Purchase Order</h2>
+      <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">
+        New Purchase Order
+      </h2>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Product picker */}
-        <div className="bg-white rounded-xl border p-4 space-y-3">
-          <h3 className="font-medium text-gray-700">Products</h3>
+        <div className="app-card p-4 space-y-3">
+          <h3 className="font-semibold text-sea-ink">Products</h3>
           <Input
             placeholder="Search products…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <div className="max-h-80 overflow-y-auto divide-y">
+          <div className="max-h-80 overflow-y-auto divide-y divide-line">
             {filtered.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => addLine(p)}
-                className="w-full flex items-center justify-between px-2 py-2.5 hover:bg-gray-50 text-left"
+                className="w-full flex items-center justify-between px-2 py-2.5 hover:bg-sea-ink/[0.04] text-left"
               >
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                  <p className="text-xs text-gray-500">Stock: {p.stockQty}</p>
+                  <p className="text-sm font-medium text-sea-ink">{p.name}</p>
+                  <p className="text-xs text-sea-ink-soft">
+                    Stock: {p.stockQty}
+                  </p>
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-sea-ink-soft">
                   Cost: {p.buyingPrice}
                 </span>
               </button>
@@ -138,7 +145,7 @@ function NewPurchaseOrderPage() {
           <div className="space-y-1">
             <Label>Supplier (optional)</Label>
             <select
-              className="w-full border rounded-md px-3 py-2 text-sm"
+              className="w-full border border-line rounded-md px-3 py-2 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
             >
@@ -151,16 +158,16 @@ function NewPurchaseOrderPage() {
             </select>
           </div>
 
-          <div className="bg-white rounded-xl border p-4 space-y-3">
-            <h3 className="font-medium text-gray-700">Order lines</h3>
+          <div className="app-card p-4 space-y-3">
+            <h3 className="font-semibold text-sea-ink">Order lines</h3>
             {lines.length === 0 ? (
-              <p className="text-sm text-gray-400">No products added.</p>
+              <p className="text-sm text-sea-ink-soft">No products added.</p>
             ) : (
               <div className="space-y-2">
                 {lines.map((l) => (
                   <div key={l.productId} className="flex items-center gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-sea-ink truncate">
                         {l.name}
                       </p>
                     </div>
@@ -173,10 +180,10 @@ function NewPurchaseOrderPage() {
                           quantity: Math.max(1, Number(e.target.value)),
                         })
                       }
-                      className="w-16 border rounded px-2 py-1 text-sm text-center"
+                      className="w-16 border border-line rounded px-2 py-1 text-sm text-center focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
                       title="Quantity"
                     />
-                    <span className="text-gray-400 text-xs">×</span>
+                    <span className="text-sea-ink-soft text-xs">×</span>
                     <input
                       type="number"
                       step="0.01"
@@ -185,7 +192,7 @@ function NewPurchaseOrderPage() {
                       onChange={(e) =>
                         updateLine(l.productId, { unitCost: e.target.value })
                       }
-                      className="w-20 border rounded px-2 py-1 text-sm text-right"
+                      className="w-20 border border-line rounded px-2 py-1 text-sm text-right focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
                       title="Unit cost"
                     />
                     <span className="w-16 text-right text-sm font-medium">
@@ -194,7 +201,7 @@ function NewPurchaseOrderPage() {
                     <button
                       type="button"
                       onClick={() => removeLine(l.productId)}
-                      className="text-gray-300 hover:text-red-500 text-sm"
+                      className="text-sea-ink-soft hover:text-red-500 text-sm"
                     >
                       ✕
                     </button>
@@ -202,7 +209,7 @@ function NewPurchaseOrderPage() {
                 ))}
               </div>
             )}
-            <div className="pt-2 border-t flex justify-between font-medium">
+            <div className="pt-2 border-t border-line flex justify-between font-medium text-sea-ink">
               <span>Total</span>
               <span>{total.toFixed(2)}</span>
             </div>

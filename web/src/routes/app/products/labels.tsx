@@ -52,10 +52,10 @@ function LabelsPage() {
     <div className="min-h-screen bg-gray-100 print:bg-white">
       {/* Toolbar — hidden on print */}
       <div className="print:hidden">
-        <div className="flex items-center justify-between px-6 py-3 bg-white border-b">
+        <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-line">
           <Link
             to="/app/products"
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900"
+            className="flex items-center gap-2 text-sm text-sea-ink-soft hover:text-sea-ink"
           >
             <ArrowLeft size={16} />
             Back to products
@@ -63,7 +63,7 @@ function LabelsPage() {
           <button
             onClick={() => window.print()}
             disabled={totalLabels === 0}
-            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-40"
+            className="btn-ink flex items-center gap-2 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
           >
             <Printer size={16} />
             Print {totalLabels > 0 ? `(${totalLabels})` : ''}
@@ -72,28 +72,28 @@ function LabelsPage() {
 
         {/* Product selector */}
         <div className="p-6 max-w-3xl mx-auto space-y-3">
-          <h2 className="text-xl font-semibold text-gray-900">Barcode Labels</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Barcode Labels</h2>
+          <p className="text-sm text-sea-ink-soft">
             Set how many labels to print per product, then click Print.
           </p>
-          <div className="bg-white border rounded-xl divide-y">
+          <div className="app-card divide-y divide-line">
             {products.map((p) => (
               <div
                 key={p.id}
                 className="flex items-center justify-between px-4 py-3 gap-3"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-sea-ink truncate">
                     {p.name}
                   </p>
-                  <p className="text-xs text-gray-400 font-mono">
+                  <p className="text-xs text-sea-ink-soft font-mono">
                     {labelCode(p)}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => setCount(p.id, (counts[p.id] ?? 0) - 1)}
-                    className="w-7 h-7 rounded border text-gray-600 hover:bg-gray-100"
+                    className="w-7 h-7 rounded border border-line text-sea-ink-soft hover:bg-sea-ink/[0.04]"
                   >
                     −
                   </button>
@@ -106,7 +106,7 @@ function LabelsPage() {
                   />
                   <button
                     onClick={() => setCount(p.id, (counts[p.id] ?? 0) + 1)}
-                    className="w-7 h-7 rounded border text-gray-600 hover:bg-gray-100"
+                    className="w-7 h-7 rounded border border-line text-sea-ink-soft hover:bg-sea-ink/[0.04]"
                   >
                     +
                   </button>
@@ -126,10 +126,10 @@ function LabelsPage() {
               className="label border border-dashed border-gray-300 print:border-gray-200 rounded-md print:rounded-none p-2 flex flex-col items-center justify-center bg-white"
               style={{ width: '180px', height: '110px' }}
             >
-              <p className="text-xs font-semibold text-gray-900 text-center leading-tight truncate w-full">
+              <p className="text-xs font-semibold text-sea-ink text-center leading-tight truncate w-full">
                 {p.name}
               </p>
-              <p className="text-sm font-bold text-gray-900 my-0.5">
+              <p className="text-sm font-bold text-sea-ink my-0.5">
                 {new Intl.NumberFormat('en-GH', {
                   style: 'currency',
                   currency,
@@ -142,7 +142,7 @@ function LabelsPage() {
         </div>
 
         {totalLabels === 0 && (
-          <p className="print:hidden text-center text-gray-400 py-12">
+          <p className="print:hidden text-center text-sea-ink-soft py-12">
             No labels selected yet.
           </p>
         )}

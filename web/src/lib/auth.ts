@@ -15,5 +15,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  session: {
+    // Store the session+user in a signed cookie so getSession() — called on
+    // every server fn and on the /app beforeLoad — reads it without a DB
+    // round-trip. Refreshes from DB every 5 min.
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+    },
+  },
   plugins: [tanstackStartCookies()],
 })

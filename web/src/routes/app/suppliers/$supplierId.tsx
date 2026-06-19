@@ -1,4 +1,5 @@
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useRefresh } from '#/lib/use-refresh'
 import { useState } from 'react'
 
 import { Button } from '#/components/ui/button'
@@ -15,7 +16,7 @@ export const Route = createFileRoute('/app/suppliers/$supplierId')({
 
 function SupplierDetailPage() {
   const { supplier, products, pos, stats, currency } = Route.useLoaderData()
-  const router = useRouter()
+  const refresh = useRefresh()
   const money = (n: number | string) =>
     new Intl.NumberFormat('en-GH', {
       style: 'currency',
@@ -47,7 +48,7 @@ function SupplierDetailPage() {
         },
       })
       setEditing(false)
-      router.invalidate()
+      refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {

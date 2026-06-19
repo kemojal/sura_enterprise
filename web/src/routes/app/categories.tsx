@@ -1,4 +1,5 @@
-import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { useRefresh } from '#/lib/use-refresh'
 import { useState } from 'react'
 import { Check, Pencil, Tag, Trash2, X } from 'lucide-react'
 
@@ -22,7 +23,7 @@ export const Route = createFileRoute('/app/categories')({
 
 function CategoriesPage() {
   const categories = Route.useLoaderData()
-  const router = useRouter()
+  const refresh = useRefresh()
 
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -35,7 +36,7 @@ function CategoriesPage() {
     setError('')
     try {
       await fn()
-      router.invalidate()
+      refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Action failed')
     } finally {
@@ -55,8 +56,8 @@ function CategoriesPage() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-2">
-        <Tag size={20} className="text-gray-700" />
-        <h2 className="text-xl font-semibold text-gray-900">Categories</h2>
+        <Tag size={20} className="text-sea-ink" />
+        <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Categories</h2>
       </div>
 
       <form onSubmit={handleAdd} className="flex gap-2">
@@ -73,11 +74,11 @@ function CategoriesPage() {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {categories.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-sea-ink-soft">
           No categories yet. Add one above.
         </div>
       ) : (
-        <div className="bg-white border rounded-xl divide-y">
+        <div className="app-card divide-y divide-line">
           {categories.map((c) => (
             <div
               key={c.id}
@@ -100,14 +101,14 @@ function CategoriesPage() {
                         })
                       }
                       disabled={busy || !editName.trim()}
-                      className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                      className="p-1.5 text-palm hover:bg-palm/12 rounded"
                       title="Save"
                     >
                       <Check size={16} />
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="p-1.5 text-gray-400 hover:bg-gray-100 rounded"
+                      className="p-1.5 text-sea-ink-soft hover:bg-sea-ink/[0.04] rounded"
                       title="Cancel"
                     >
                       <X size={16} />
@@ -117,8 +118,8 @@ function CategoriesPage() {
               ) : (
                 <>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{c.name}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm font-medium text-sea-ink">{c.name}</p>
+                    <p className="text-xs text-sea-ink-soft">
                       {c.productCount} product{c.productCount === 1 ? '' : 's'}
                     </p>
                   </div>
@@ -128,7 +129,7 @@ function CategoriesPage() {
                         setEditingId(c.id)
                         setEditName(c.name)
                       }}
-                      className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                      className="p-1.5 text-sea-ink-soft hover:bg-sea-ink/[0.04] rounded"
                       title="Rename"
                     >
                       <Pencil size={15} />

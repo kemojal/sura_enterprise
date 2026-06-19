@@ -94,12 +94,12 @@ function ReorderPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/app/purchase-orders" className="text-gray-400 hover:text-gray-700">
+        <Link to="/app/purchase-orders" className="text-sea-ink-soft hover:text-sea-ink">
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Reorder Low Stock</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Reorder Low Stock</h2>
+          <p className="text-sm text-sea-ink-soft mt-0.5">
             Suggested quantities top stock up to 2× the alert threshold. One
             order is created per supplier.
           </p>
@@ -109,7 +109,7 @@ function ReorderPage() {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {suggestions.length === 0 ? (
-        <div className="bg-white border rounded-xl p-10 text-center text-gray-400">
+        <div className="app-card p-10 text-center text-sea-ink-soft">
           Nothing to reorder — all products are above their low-stock threshold.
         </div>
       ) : (
@@ -119,12 +119,12 @@ function ReorderPage() {
           return (
             <div
               key={key}
-              className={`bg-white border rounded-xl overflow-hidden ${created ? 'opacity-60' : ''}`}
+              className={`app-card overflow-hidden ${created ? 'opacity-60' : ''}`}
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
-                <span className="font-medium text-gray-900">{group.name}</span>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-sea-ink/[0.03]">
+                <span className="font-semibold text-sea-ink">{group.name}</span>
                 {created ? (
-                  <span className="text-xs text-green-700 font-medium">
+                  <span className="text-xs text-palm font-medium">
                     Order created ✓
                   </span>
                 ) : (
@@ -139,7 +139,7 @@ function ReorderPage() {
                 )}
               </div>
               <table className="w-full text-sm">
-                <thead className="text-gray-400 text-left">
+                <thead className="text-sea-ink-soft text-left">
                   <tr>
                     <th className="px-4 py-2 font-normal w-8"></th>
                     <th className="px-4 py-2 font-normal">Product</th>
@@ -148,7 +148,7 @@ function ReorderPage() {
                     <th className="px-4 py-2 font-normal text-right">Unit Cost</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-line">
                   {group.items.map((i) => {
                     const line = lines[i.id]
                     const isOut = i.stockQty === 0
@@ -164,7 +164,7 @@ function ReorderPage() {
                             }
                           />
                         </td>
-                        <td className="px-4 py-2 text-gray-900">
+                        <td className="px-4 py-2 text-sea-ink">
                           {i.name}
                           <span
                             className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${isOut ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}
@@ -172,7 +172,7 @@ function ReorderPage() {
                             {isOut ? 'Out' : `${i.stockQty} left`}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-center text-gray-500">
+                        <td className="px-4 py-2 text-center text-sea-ink-soft">
                           {i.stockQty}/{i.lowStockThreshold}
                         </td>
                         <td className="px-4 py-2 text-right">
@@ -186,7 +186,7 @@ function ReorderPage() {
                                 quantity: Math.max(1, Number(e.target.value)),
                               })
                             }
-                            className="w-16 border rounded px-2 py-1 text-sm text-right"
+                            className="w-16 border border-line rounded px-2 py-1 text-sm text-right focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
                           />
                         </td>
                         <td className="px-4 py-2 text-right">
@@ -199,7 +199,7 @@ function ReorderPage() {
                             onChange={(e) =>
                               setLine(i.id, { unitCost: e.target.value })
                             }
-                            className="w-20 border rounded px-2 py-1 text-sm text-right"
+                            className="w-20 border border-line rounded px-2 py-1 text-sm text-right focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
                           />
                         </td>
                       </tr>

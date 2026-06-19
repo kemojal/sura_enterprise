@@ -3,10 +3,7 @@ import { z } from 'zod'
 
 import { SaleForm } from '#/components/forms/sale-form'
 import { RouteDialog } from '#/components/route-dialog'
-import { listCustomers } from '#/lib/customers'
-import { listHeldSales } from '#/lib/held-sales'
-import { listSellableItems } from '#/lib/products'
-import { getSaleConfig, listSales } from '#/lib/sales'
+import { getSalesNewData } from '#/lib/page-data'
 import { SalesContent } from './index'
 
 export const Route = createFileRoute('/app/sales/new')({
@@ -15,14 +12,11 @@ export const Route = createFileRoute('/app/sales/new')({
     to: z.string().optional(),
   }),
   loaderDeps: ({ search }) => search,
+  // One server fn -> one round-trip, one getShopCtx, all queries parallel.
   loader: async ({ deps }) => {
-    const [sales, sellable, customers, config, held] = await Promise.all([
-      listSales({ data: deps }),
-      listSellableItems(),
-      listCustomers({ data: {} }),
-      getSaleConfig(),
-      listHeldSales(),
-    ])
+    const { sales, sellable, customers, config, held } = await getSalesNewData({
+      data: deps,
+    })
     // Plain products + every variant, each pickable on the POS
     const products = [...sellable.products, ...sellable.variants]
     return { sales, products, customers, config, held }

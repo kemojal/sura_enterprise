@@ -3,6 +3,8 @@ import { z } from 'zod'
 
 import { getReport } from '#/lib/reports'
 
+import { can } from '#/lib/permissions'
+
 function defaultFrom() {
   const d = new Date()
   d.setDate(1)
@@ -12,8 +14,6 @@ function defaultFrom() {
 function defaultTo() {
   return new Date().toISOString().slice(0, 10)
 }
-
-import { can } from '#/lib/permissions'
 
 export const Route = createFileRoute('/app/reports')({
   beforeLoad: ({ context }) => {
@@ -78,10 +78,10 @@ function SalesTrend({
   }
 
   return (
-    <div className="bg-white rounded-xl border p-5 space-y-4">
+    <div className="app-card p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="font-medium text-gray-700">Daily Revenue</h3>
-        <div className="text-xs text-gray-400">
+        <h3 className="font-semibold text-sea-ink">Daily Revenue</h3>
+        <div className="text-xs text-sea-ink-soft">
           Peak {fmtCur(peak.total)} on{' '}
           {new Date(peak.date).toLocaleDateString('en-GH', {
             day: 'numeric',
@@ -99,12 +99,12 @@ function SalesTrend({
               className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group"
             >
               <div
-                className="w-full rounded-t bg-blue-200 hover:bg-blue-400 transition-colors relative"
+                className="w-full rounded-t bg-gradient-to-t from-lagoon/40 to-lagoon hover:from-lagoon hover:to-lagoon-deep transition-colors relative"
                 style={{ height: `${Math.max(heightPct, 1)}%` }}
                 title={`${new Date(d.date).toLocaleDateString()}: ${fmtCur(d.total)}`}
               />
               {i % labelEvery === 0 && (
-                <span className="text-[9px] text-gray-400 whitespace-nowrap">
+                <span className="text-[9px] text-sea-ink-soft whitespace-nowrap">
                   {new Date(d.date).toLocaleDateString('en-GH', {
                     day: 'numeric',
                     month: 'short',
@@ -134,21 +134,21 @@ function ReportsPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
-      <h2 className="text-xl font-semibold text-gray-900">Reports</h2>
+      <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Reports</h2>
 
       <div className="flex gap-3 items-center">
         <input
           type="date"
-          className="border rounded-md px-3 py-1.5 text-sm"
+          className="border border-line rounded-md px-3 py-1.5 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
           value={from ?? defaultFrom()}
           onChange={(e) =>
             navigate({ search: (s) => ({ ...s, from: e.target.value }) })
           }
         />
-        <span className="text-gray-400 text-sm">to</span>
+        <span className="text-sea-ink-soft text-sm">to</span>
         <input
           type="date"
-          className="border rounded-md px-3 py-1.5 text-sm"
+          className="border border-line rounded-md px-3 py-1.5 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
           value={to ?? defaultTo()}
           onChange={(e) =>
             navigate({ search: (s) => ({ ...s, to: e.target.value }) })
@@ -170,14 +170,14 @@ function ReportsPage() {
           },
           { label: 'Sales Count', value: String(data.salesCount) },
         ].map(({ label, value, pos }) => (
-          <div key={label} className="bg-white rounded-xl border p-5">
-            <p className="text-sm text-gray-500">{label}</p>
+          <div key={label} className="app-tile p-5">
+            <p className="text-sm text-sea-ink-soft">{label}</p>
             <p
-              className={`text-2xl font-bold mt-1 ${
+              className={`stat-num text-2xl mt-1 ${
                 pos === undefined
-                  ? 'text-gray-900'
+                  ? 'text-sea-ink'
                   : pos
-                    ? 'text-green-700'
+                    ? 'text-palm'
                     : 'text-red-600'
               }`}
             >
@@ -191,23 +191,23 @@ function ReportsPage() {
       <SalesTrend data={data.dailySales} currency={data.currency} />
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="bg-white rounded-xl border p-5 space-y-3">
-          <h3 className="font-medium text-gray-700">Top Products</h3>
+        <div className="app-card p-5 space-y-3">
+          <h3 className="font-semibold text-sea-ink">Top Products</h3>
           {data.topProducts.length === 0 ? (
-            <p className="text-sm text-gray-400">No sales in this period.</p>
+            <p className="text-sm text-sea-ink-soft">No sales in this period.</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-400 text-left">
+                <tr className="text-sea-ink-soft text-left">
                   <th className="pb-2 font-normal">Product</th>
                   <th className="pb-2 font-normal text-right">Units</th>
                   <th className="pb-2 font-normal text-right">Revenue</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-line">
                 {data.topProducts.map((p, i) => (
                   <tr key={p.productId ?? i}>
-                    <td className="py-2 text-gray-700">{p.name}</td>
+                    <td className="py-2 text-sea-ink">{p.name}</td>
                     <td className="py-2 text-right">{p.totalQty}</td>
                     <td className="py-2 text-right font-medium">
                       {Number(p.totalRevenue).toFixed(2)}
@@ -219,22 +219,22 @@ function ReportsPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl border p-5 space-y-3">
-          <h3 className="font-medium text-gray-700">Expenses by Category</h3>
+        <div className="app-card p-5 space-y-3">
+          <h3 className="font-semibold text-sea-ink">Expenses by Category</h3>
           {data.expByCategory.length === 0 ? (
-            <p className="text-sm text-gray-400">No expenses in this period.</p>
+            <p className="text-sm text-sea-ink-soft">No expenses in this period.</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-400 text-left">
+                <tr className="text-sea-ink-soft text-left">
                   <th className="pb-2 font-normal">Category</th>
                   <th className="pb-2 font-normal text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-line">
                 {data.expByCategory.map((e) => (
                   <tr key={e.category}>
-                    <td className="py-2 text-gray-700">
+                    <td className="py-2 text-sea-ink">
                       {catLabel[e.category] ?? e.category}
                     </td>
                     <td className="py-2 text-right font-medium text-red-600">
@@ -249,10 +249,10 @@ function ReportsPage() {
       </div>
 
       {/* Sales by payment method */}
-      <div className="bg-white rounded-xl border p-5 space-y-3">
-        <h3 className="font-medium text-gray-700">Sales by Payment Method</h3>
+      <div className="app-card p-5 space-y-3">
+        <h3 className="font-semibold text-sea-ink">Sales by Payment Method</h3>
         {data.salesByMethod.length === 0 ? (
-          <p className="text-sm text-gray-400">No sales in this period.</p>
+          <p className="text-sm text-sea-ink-soft">No sales in this period.</p>
         ) : (
           (() => {
             const grand = data.salesByMethod.reduce(
@@ -266,20 +266,20 @@ function ReportsPage() {
                   return (
                     <div key={m.method} className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-700">
+                        <span className="text-sea-ink">
                           {methodLabel[m.method] ?? m.method}
-                          <span className="text-gray-400 ml-1.5 text-xs">
+                          <span className="text-sea-ink-soft ml-1.5 text-xs">
                             ({m.count} sale{m.count === 1 ? '' : 's'})
                           </span>
                         </span>
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-sea-ink">
                           {fmt(Number(m.total))}
-                          <span className="text-gray-400 ml-1.5 text-xs">
+                          <span className="text-sea-ink-soft ml-1.5 text-xs">
                             {pct.toFixed(0)}%
                           </span>
                         </span>
                       </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-2 bg-sea-ink/[0.06] rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${methodBar[m.method] ?? 'bg-gray-400'}`}
                           style={{ width: `${Math.max(pct, 1)}%` }}
@@ -295,19 +295,19 @@ function ReportsPage() {
       </div>
 
       {/* Product profitability */}
-      <div className="bg-white rounded-xl border p-5 space-y-3">
+      <div className="app-card p-5 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium text-gray-700">Most Profitable Products</h3>
-          <span className="text-sm text-gray-500">
-            Gross profit: <strong className="text-green-700">{fmt(data.grossProfit)}</strong>
+          <h3 className="font-semibold text-sea-ink">Most Profitable Products</h3>
+          <span className="text-sm text-sea-ink-soft">
+            Gross profit: <strong className="text-palm">{fmt(data.grossProfit)}</strong>
           </span>
         </div>
         {data.productProfit.length === 0 ? (
-          <p className="text-sm text-gray-400">No sales in this period.</p>
+          <p className="text-sm text-sea-ink-soft">No sales in this period.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-400 text-left">
+              <tr className="text-sea-ink-soft text-left">
                 <th className="pb-2 font-normal">Product</th>
                 <th className="pb-2 font-normal text-right">Units</th>
                 <th className="pb-2 font-normal text-right">Revenue</th>
@@ -316,7 +316,7 @@ function ReportsPage() {
                 <th className="pb-2 font-normal text-right">Margin</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-line">
               {data.productProfit.map((p, i) => {
                 const revenue = Number(p.revenue)
                 const cost = Number(p.cost)
@@ -324,20 +324,20 @@ function ReportsPage() {
                 const margin = revenue > 0 ? (profit / revenue) * 100 : 0
                 return (
                   <tr key={p.productId ?? i}>
-                    <td className="py-2 text-gray-700">{p.name}</td>
-                    <td className="py-2 text-right text-gray-600">{p.unitsSold}</td>
-                    <td className="py-2 text-right text-gray-600">
+                    <td className="py-2 text-sea-ink">{p.name}</td>
+                    <td className="py-2 text-right text-sea-ink-soft">{p.unitsSold}</td>
+                    <td className="py-2 text-right text-sea-ink-soft">
                       {revenue.toFixed(2)}
                     </td>
-                    <td className="py-2 text-right text-gray-600">
+                    <td className="py-2 text-right text-sea-ink-soft">
                       {cost.toFixed(2)}
                     </td>
                     <td
-                      className={`py-2 text-right font-medium ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}
+                      className={`py-2 text-right font-medium ${profit >= 0 ? 'text-palm' : 'text-red-600'}`}
                     >
                       {profit.toFixed(2)}
                     </td>
-                    <td className="py-2 text-right text-gray-500">
+                    <td className="py-2 text-right text-sea-ink-soft">
                       {margin.toFixed(0)}%
                     </td>
                   </tr>

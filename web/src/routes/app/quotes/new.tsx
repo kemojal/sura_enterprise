@@ -5,9 +5,8 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Textarea } from '#/components/ui/textarea'
-import { listCustomers } from '#/lib/customers'
 import { can } from '#/lib/permissions'
-import { listSellableItems } from '#/lib/products'
+import { getQuotesNewData } from '#/lib/page-data'
 import { createQuote } from '#/lib/quotes'
 
 export const Route = createFileRoute('/app/quotes/new')({
@@ -15,10 +14,7 @@ export const Route = createFileRoute('/app/quotes/new')({
     if (!can(context.role, 'sales')) throw redirect({ to: '/app/dashboard' })
   },
   loader: async () => {
-    const [sellable, customers] = await Promise.all([
-      listSellableItems(),
-      listCustomers({ data: {} }),
-    ])
+    const { sellable, customers } = await getQuotesNewData()
     return {
       products: [...sellable.products, ...sellable.variants],
       customers,
@@ -69,14 +65,22 @@ function NewQuotePage() {
       }
       return [
         ...prev,
-        { productId: p.id, variantId: v, name: p.name, quantity: 1, unitPrice: p.sellingPrice },
+        {
+          productId: p.id,
+          variantId: v,
+          name: p.name,
+          quantity: 1,
+          unitPrice: p.sellingPrice,
+        },
       ]
     })
   }
 
   function updateLine(k: string, patch: Partial<Line>) {
     setLines((prev) =>
-      prev.map((l) => (key(l.productId, l.variantId) === k ? { ...l, ...patch } : l)),
+      prev.map((l) =>
+        key(l.productId, l.variantId) === k ? { ...l, ...patch } : l,
+      ),
     )
   }
   function removeLine(k: string) {
@@ -108,7 +112,10 @@ function NewQuotePage() {
           validUntil: validUntil || undefined,
         },
       })
-      await router.navigate({ to: '/app/quotes/$quoteId', params: { quoteId: id } })
+      await router.navigate({
+        to: '/app/quotes/$quoteId',
+        params: { quoteId: id },
+      })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create quote')
     } finally {
@@ -137,7 +144,9 @@ function NewQuotePage() {
                 onClick={() => add(p)}
                 className="w-full flex items-center justify-between px-2 py-2.5 hover:bg-gray-50 text-left"
               >
-                <span className="text-sm font-medium text-gray-900">{p.name}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {p.name}
+                </span>
                 <span className="text-sm text-gray-700">{p.sellingPrice}</span>
               </button>
             ))}
@@ -180,7 +189,9 @@ function NewQuotePage() {
                         min="1"
                         value={l.quantity}
                         onChange={(e) =>
-                          updateLine(k, { quantity: Math.max(1, Number(e.target.value)) })
+                          updateLine(k, {
+                            quantity: Math.max(1, Number(e.target.value)),
+                          })
                         }
                         className="w-14 border rounded px-2 py-1 text-sm text-center"
                       />
@@ -189,7 +200,9 @@ function NewQuotePage() {
                         type="number"
                         step="0.01"
                         value={l.unitPrice}
-                        onChange={(e) => updateLine(k, { unitPrice: e.target.value })}
+                        onChange={(e) =>
+                          updateLine(k, { unitPrice: e.target.value })
+                        }
                         className="w-20 border rounded px-2 py-1 text-sm text-right"
                       />
                       <span className="w-16 text-right text-sm font-medium">

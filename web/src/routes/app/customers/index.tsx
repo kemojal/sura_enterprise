@@ -3,10 +3,12 @@ import type { ReactNode } from 'react'
 
 import { Button } from '#/components/ui/button'
 import { ExportButton } from '#/components/export-button'
-import { listCustomers } from '#/lib/customers'
+import type { listCustomers } from '#/lib/customers'
+import { customersListQuery } from '#/lib/queries'
 
 export const Route = createFileRoute('/app/customers/')({
-  loader: () => listCustomers({ data: {} }),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(customersListQuery()),
   component: CustomersPage,
 })
 
@@ -26,7 +28,9 @@ export function CustomersContent({
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Customers</h2>
+        <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">
+          Customers
+        </h2>
         <div className="flex items-center gap-2">
           <ExportButton
             rows={customers}
@@ -35,7 +39,10 @@ export function CustomersContent({
               { header: 'Name', value: (c) => c.name },
               { header: 'Phone', value: (c) => c.phone ?? '' },
               { header: 'Email', value: (c) => c.email ?? '' },
-              { header: 'Outstanding Debt', value: (c) => Number(c.totalDebt).toFixed(2) },
+              {
+                header: 'Outstanding Debt',
+                value: (c) => Number(c.totalDebt).toFixed(2),
+              },
             ]}
           />
           <Link to="/app/customers/new">
@@ -45,11 +52,13 @@ export function CustomersContent({
       </div>
 
       {customers.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">No customers yet.</div>
+        <div className="text-center py-16 text-sea-ink-soft">
+          No customers yet.
+        </div>
       ) : (
-        <div className="overflow-hidden rounded-md border bg-white">
+        <div className="app-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-left">
+            <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Phone</th>
@@ -60,28 +69,32 @@ export function CustomersContent({
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-line">
               {customers.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
+                <tr key={c.id} className="hover:bg-sea-ink/[0.04]">
+                  <td className="px-4 py-3 font-medium text-sea-ink">
                     {c.name}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{c.phone ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.email ?? '—'}</td>
+                  <td className="px-4 py-3 text-sea-ink-soft">
+                    {c.phone ?? '—'}
+                  </td>
+                  <td className="px-4 py-3 text-sea-ink-soft">
+                    {c.email ?? '—'}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     {Number(c.totalDebt) > 0 ? (
                       <span className="text-red-600 font-medium">
                         {Number(c.totalDebt).toFixed(2)}
                       </span>
                     ) : (
-                      <span className="text-gray-400">0.00</span>
+                      <span className="text-sea-ink-soft">0.00</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
                       to="/app/customers/$customerId"
                       params={{ customerId: c.id }}
-                      className="text-blue-600 hover:underline text-xs"
+                      className="text-lagoon-deep hover:underline text-xs"
                     >
                       View
                     </Link>

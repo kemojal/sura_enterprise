@@ -34,11 +34,11 @@ function SetupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-xl shadow p-8 space-y-6">
+    <div className="island-shell min-h-screen flex items-center justify-center p-4">
+      <div className="app-card w-full max-w-md p-8 space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Set up your shop</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Set up your shop</h2>
+          <p className="text-sm text-sea-ink-soft mt-1">
             Tell us about your business
           </p>
         </div>
@@ -77,7 +77,7 @@ function SetupPage() {
             <Label htmlFor="currency">Currency</Label>
             <select
               id="currency"
-              className="w-full border rounded-md px-3 py-2 text-sm"
+              className="w-full border border-line rounded-md px-3 py-2 text-sm focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 outline-none transition"
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
             >
@@ -91,7 +91,7 @@ function SetupPage() {
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="btn-ink w-full text-white" disabled={loading}>
             {loading ? 'Creating shop…' : 'Create shop'}
           </Button>
         </form>

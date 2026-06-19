@@ -1,4 +1,5 @@
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useRefresh } from '#/lib/use-refresh'
 import { useState } from 'react'
 import { MessageCircle } from 'lucide-react'
 
@@ -16,7 +17,7 @@ export const Route = createFileRoute('/app/customers/$customerId')({
 function CustomerDetailPage() {
   const { customer, sales, payments, totalDebt, insights, topProducts } =
     Route.useLoaderData()
-  const router = useRouter()
+  const refresh = useRefresh()
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
   const [loading, setLoading] = useState(false)
@@ -75,7 +76,7 @@ function CustomerDetailPage() {
       })
       setPayAmount('')
       setPayNote('')
-      router.invalidate()
+      refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to record payment')
     } finally {
@@ -120,30 +121,30 @@ function CustomerDetailPage() {
               : '—',
           },
         ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border p-4">
-            <p className="text-xs text-gray-500">{s.label}</p>
-            <p className="text-lg font-bold text-gray-900 mt-1">{s.value}</p>
+          <div key={s.label} className="app-tile p-4">
+            <p className="text-xs text-sea-ink-soft">{s.label}</p>
+            <p className="stat-num text-lg text-sea-ink mt-1">{s.value}</p>
           </div>
         ))}
       </div>
 
       {topProducts.length > 0 && (
-        <div className="bg-white rounded-xl border p-5 space-y-3">
-          <h3 className="font-medium text-gray-700">Most Bought</h3>
+        <div className="app-card p-5 space-y-3">
+          <h3 className="font-semibold text-sea-ink">Most Bought</h3>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-400 text-left">
+              <tr className="text-sea-ink-soft text-left">
                 <th className="pb-2 font-normal">Product</th>
                 <th className="pb-2 font-normal text-right">Units</th>
                 <th className="pb-2 font-normal text-right">Spent</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-line">
               {topProducts.map((p, i) => (
                 <tr key={p.name ?? i}>
-                  <td className="py-2 text-gray-700">{p.name}</td>
-                  <td className="py-2 text-right text-gray-600">{p.units}</td>
-                  <td className="py-2 text-right font-medium text-gray-900">
+                  <td className="py-2 text-sea-ink">{p.name}</td>
+                  <td className="py-2 text-right text-sea-ink-soft">{p.units}</td>
+                  <td className="py-2 text-right font-medium text-sea-ink">
                     {money(Number(p.spent))}
                   </td>
                 </tr>

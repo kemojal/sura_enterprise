@@ -119,6 +119,21 @@
 
 @theme inline {
   --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+
+  --color-sea-ink: var(--sea-ink);
+  --color-sea-ink-soft: var(--sea-ink-soft);
+  --color-lagoon: var(--lagoon);
+  --color-lagoon-deep: var(--lagoon-deep);
+  --color-palm: var(--palm);
+  --color-sand: var(--sand);
+  --color-foam: var(--foam);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--line);
+  --color-kicker: var(--kicker);
+  --color-header-bg: var(--header-bg);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -167,42 +182,22 @@ body {
   margin: 0;
   color: var(--sea-ink);
   font-family: var(--font-sans);
-  background-color: var(--bg-base);
-  background:
-    radial-gradient(1100px 620px at -8% -10%, var(--hero-a), transparent 58%),
-    radial-gradient(1050px 620px at 112% -12%, var(--hero-b), transparent 62%),
-    radial-gradient(720px 380px at 50% 115%, rgba(79, 184, 178, 0.1), transparent 68%),
-    linear-gradient(180deg, color-mix(in oklab, var(--sand) 68%, white) 0%, var(--foam) 44%, var(--bg-base) 100%);
+  background-color: #ffffff;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Whisper-soft brand wash — keeps white from feeling flat without tinting it */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: -1;
-  opacity: 0.28;
   background:
-    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.8), transparent 34%),
-    radial-gradient(circle at 78% 26%, rgba(79, 184, 178, 0.2), transparent 42%),
-    radial-gradient(circle at 42% 82%, rgba(47, 106, 74, 0.14), transparent 36%);
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.14;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
+    radial-gradient(900px 520px at -6% -8%, rgba(79, 184, 178, 0.07), transparent 60%),
+    radial-gradient(900px 520px at 106% -6%, rgba(47, 106, 74, 0.05), transparent 62%);
 }
 
 a {
@@ -254,8 +249,8 @@ pre code {
   background: linear-gradient(165deg, var(--surface-strong), var(--surface));
   box-shadow:
     0 1px 0 var(--inset-glint) inset,
-    0 22px 44px rgba(30, 90, 72, 0.1),
-    0 6px 18px rgba(23, 58, 64, 0.08);
+    0 14px 36px -18px rgba(30, 90, 72, 0.07),
+    0 4px 12px -8px rgba(23, 58, 64, 0.05);
   backdrop-filter: blur(4px);
 }
 
@@ -263,8 +258,8 @@ pre code {
   background: linear-gradient(165deg, color-mix(in oklab, var(--surface-strong) 93%, white 7%), var(--surface));
   box-shadow:
     0 1px 0 var(--inset-glint) inset,
-    0 18px 34px rgba(30, 90, 72, 0.1),
-    0 4px 14px rgba(23, 58, 64, 0.06);
+    0 12px 28px -18px rgba(30, 90, 72, 0.06),
+    0 3px 9px -6px rgba(23, 58, 64, 0.04);
 }
 
 .feature-card:hover {
@@ -334,6 +329,222 @@ a {
 .site-footer {
   border-top: 1px solid var(--line);
   background: color-mix(in oklab, var(--header-bg) 84%, transparent 16%);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--lagoon) 38%, transparent);
+  color: var(--sea-ink);
+}
+
+/* Animated aurora gradient for hero accent text */
+.text-aurora {
+  background-image: linear-gradient(
+    100deg,
+    var(--lagoon-deep),
+    var(--palm) 38%,
+    var(--lagoon) 70%,
+    var(--lagoon-deep)
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: aurora-pan 9s ease-in-out infinite;
+}
+
+@keyframes aurora-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Eyebrow / kicker pill */
+.eyebrow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--chip-line);
+  background: var(--chip-bg);
+  color: var(--sea-ink-soft);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 1px 0 var(--inset-glint) inset, 0 4px 14px rgba(23, 58, 64, 0.05);
+  backdrop-filter: blur(6px);
+}
+
+/* Primary button with sheen on hover */
+.btn-ink {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--sea-ink) 92%, white 8%), var(--sea-ink));
+  color: #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 8px 18px -10px rgba(23, 58, 64, 0.22),
+    0 2px 5px -2px rgba(23, 58, 64, 0.12);
+}
+
+.btn-ink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%);
+  transform: translateX(-130%);
+  transition: transform 650ms ease;
+}
+
+.btn-ink:hover::after {
+  transform: translateX(130%);
+}
+
+.btn-ink:hover {
+  transform: translateY(-1px);
+}
+
+/* Logo marquee */
+.marquee {
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 34s linear infinite;
+}
+
+@keyframes marquee-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Bento / preview surface glow ring */
+.preview-frame {
+  position: relative;
+  border-radius: 1.25rem;
+  padding: 0.5rem;
+  background: linear-gradient(165deg, var(--surface-strong), var(--surface));
+  border: 1px solid var(--line);
+  box-shadow:
+    0 1px 0 var(--inset-glint) inset,
+    0 28px 60px -34px rgba(23, 58, 64, 0.16),
+    0 10px 24px -18px rgba(30, 90, 72, 0.09);
+}
+
+.stat-num {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* iOS-style liquid glass — frosted, saturated, with a thin top light edge */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 0 0 0.5px rgba(23, 58, 64, 0.06),
+    0 10px 30px -12px rgba(23, 58, 64, 0.16);
+}
+
+/* Respect the iOS home indicator / Safari bottom bar */
+.tabbar-fixed {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+}
+
+/* ── App (dashboard) surfaces ──────────────────────────────── */
+.app-bg {
+  background:
+    radial-gradient(900px 480px at 100% -10%, rgba(79, 184, 178, 0.06), transparent 60%),
+    #f6faf8;
+}
+
+.app-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(23, 58, 64, 0.04),
+    0 10px 26px -20px rgba(23, 58, 64, 0.12);
+}
+
+.app-tile {
+  background: linear-gradient(165deg, #ffffff, #fbfdfc);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(23, 58, 64, 0.04),
+    0 10px 24px -20px rgba(23, 58, 64, 0.12);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.app-tile:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--lagoon-deep) 28%, var(--line));
+  box-shadow:
+    0 1px 2px rgba(23, 58, 64, 0.04),
+    0 16px 32px -22px rgba(23, 58, 64, 0.18);
+}
+
+/* Sidebar nav link */
+.app-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  color: var(--sea-ink-soft);
+  text-decoration: none;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.app-nav:hover {
+  color: var(--sea-ink);
+  background: color-mix(in oklab, var(--sea-ink) 5%, transparent);
+}
+
+.app-nav[data-active='true'] {
+  color: var(--lagoon-deep);
+  font-weight: 600;
+  background: color-mix(in oklab, var(--lagoon) 14%, transparent);
+}
+
+.app-nav[data-active='true']::before {
+  content: '';
+  position: absolute;
+  left: -0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 1.1rem;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--lagoon), var(--palm));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in,
+  .text-aurora,
+  .marquee-track,
+  .btn-ink::after {
+    animation: none;
+    transition: none;
+  }
 }
 
 @layer base {

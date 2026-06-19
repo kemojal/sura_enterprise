@@ -7,8 +7,35 @@ import { db } from '#/db/index'
 import { customers, productVariants, products, saleItems, sales, shifts, shops, staffMembers, user } from '#/db/schema'
 import { logActivity } from './activity'
 import { getShopCtx } from './context'
+import type { ShopContext } from './context'
 import { sendLowStockAlert } from './email'
 import { nanoid } from './nanoid'
+
+export async function _listSalesCore(
+  ctx: ShopContext,
+  data: { from?: string; to?: string },
+) {
+  const conditions = [eq(sales.shopId, ctx.shopId)]
+  if (data.from) conditions.push(gte(sales.createdAt, new Date(data.from)))
+  if (data.to) conditions.push(lte(sales.createdAt, new Date(data.to)))
+  return db
+    .select({
+      id: sales.id,
+      totalAmount: sales.totalAmount,
+      amountPaid: sales.amountPaid,
+      paymentMethod: sales.paymentMethod,
+      status: sales.status,
+      createdAt: sales.createdAt,
+      customerName: customers.name,
+      cashierName: staffMembers.name,
+    })
+    .from(sales)
+    .leftJoin(customers, eq(sales.customerId, customers.id))
+    .leftJoin(staffMembers, eq(sales.cashierId, staffMembers.id))
+    .where(and(...conditions))
+    .orderBy(desc(sales.createdAt))
+    .limit(100)
+}
 
 export const listSales = createServerFn({ method: 'GET' })
   .inputValidator(
@@ -17,30 +44,9 @@ export const listSales = createServerFn({ method: 'GET' })
       to: z.string().optional(),
     }),
   )
-  .handler(async ({ data }) => {
-    const request = getRequest()
-    const { shopId } = await getShopCtx(request.headers)
-    const conditions = [eq(sales.shopId, shopId)]
-    if (data.from) conditions.push(gte(sales.createdAt, new Date(data.from)))
-    if (data.to) conditions.push(lte(sales.createdAt, new Date(data.to)))
-    return db
-      .select({
-        id: sales.id,
-        totalAmount: sales.totalAmount,
-        amountPaid: sales.amountPaid,
-        paymentMethod: sales.paymentMethod,
-        status: sales.status,
-        createdAt: sales.createdAt,
-        customerName: customers.name,
-        cashierName: staffMembers.name,
-      })
-      .from(sales)
-      .leftJoin(customers, eq(sales.customerId, customers.id))
-      .leftJoin(staffMembers, eq(sales.cashierId, staffMembers.id))
-      .where(and(...conditions))
-      .orderBy(desc(sales.createdAt))
-      .limit(100)
-  })
+  .handler(async ({ data }) =>
+    _listSalesCore(await getShopCtx(getRequest().headers), data),
+  )
 
 export const getSaleDetail = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ id: z.string() }))
@@ -102,9 +108,7 @@ export const getSaleDetail = createServerFn({ method: 'GET' })
   })
 
 // Tax config for the POS sale form
-export const getSaleConfig = createServerFn({ method: 'GET' }).handler(async () => {
-  const request = getRequest()
-  const { shopId } = await getShopCtx(request.headers)
+export async function _getSaleConfigCore(ctx: ShopContext) {
   const [shop] = await db
     .select({
       currency: shops.currency,
@@ -115,7 +119,7 @@ export const getSaleConfig = createServerFn({ method: 'GET' }).handler(async () 
       loyaltyPointValue: shops.loyaltyPointValue,
     })
     .from(shops)
-    .where(eq(shops.id, shopId))
+    .where(eq(shops.id, ctx.shopId))
     .limit(1)
   return {
     currency: shop?.currency ?? 'GHS',
@@ -125,7 +129,11 @@ export const getSaleConfig = createServerFn({ method: 'GET' }).handler(async () 
     loyaltyEarnRate: Number(shop?.loyaltyEarnRate ?? 0),
     loyaltyPointValue: Number(shop?.loyaltyPointValue ?? 0),
   }
-})
+}
+
+export const getSaleConfig = createServerFn({ method: 'GET' }).handler(
+  async () => _getSaleConfigCore(await getShopCtx(getRequest().headers)),
+)
 
 const saleItemSchema = z.object({
   productId: z.string(),

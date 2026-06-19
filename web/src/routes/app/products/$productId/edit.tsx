@@ -6,12 +6,14 @@ import { ProductForm } from '#/components/product-form'
 import { db } from '#/db/index'
 import { products } from '#/db/schema'
 import { listCategories, updateProduct } from '#/lib/products'
+import { useRefresh } from '#/lib/use-refresh'
 
 import { can } from '#/lib/permissions'
 
 export const Route = createFileRoute('/app/products/$productId/edit')({
   beforeLoad: ({ context }) => {
-    if (!can(context.role, 'products:write')) throw redirect({ to: '/app/products' })
+    if (!can(context.role, 'products:write'))
+      throw redirect({ to: '/app/products' })
   },
   loader: async ({ params }) => {
     const [product, cats] = await Promise.all([
@@ -35,12 +37,15 @@ function EditProductPage() {
   const { product, categories } = Route.useLoaderData()
   const { productId } = Route.useParams()
   const router = useRouter()
+  const refresh = useRefresh()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900">Edit product</h2>
+      <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">
+        Edit product
+      </h2>
       <ProductForm
         categories={categories}
         loading={loading}
@@ -62,6 +67,7 @@ function EditProductPage() {
           setError('')
           try {
             await updateProduct({ data: { id: productId, ...values } })
+            await refresh()
             await router.navigate({ to: '/app/products' })
           } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to save')

@@ -36,15 +36,15 @@ const actionIcon: Record<string, typeof ShoppingCart> = {
 }
 
 const actionColor: Record<string, string> = {
-  'sale.created': 'text-green-600 bg-green-50',
+  'sale.created': 'text-palm bg-palm/12',
   'sale.returned': 'text-amber-600 bg-amber-50',
-  'stock.adjusted': 'text-blue-600 bg-blue-50',
+  'stock.adjusted': 'text-lagoon-deep bg-lagoon/10',
   'po.created': 'text-purple-600 bg-purple-50',
-  'po.received': 'text-green-600 bg-green-50',
+  'po.received': 'text-palm bg-palm/12',
   'product.deleted': 'text-red-600 bg-red-50',
-  'staff.added': 'text-blue-600 bg-blue-50',
+  'staff.added': 'text-lagoon-deep bg-lagoon/10',
   'staff.suspended': 'text-red-600 bg-red-50',
-  'staff.reactivated': 'text-green-600 bg-green-50',
+  'staff.reactivated': 'text-palm bg-palm/12',
 }
 
 const filters = [
@@ -63,8 +63,8 @@ function ActivityPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-2">
-        <ActivityIcon size={20} className="text-gray-700" />
-        <h2 className="text-xl font-semibold text-gray-900">Activity Log</h2>
+        <ActivityIcon size={20} className="text-sea-ink" />
+        <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Activity Log</h2>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -76,8 +76,8 @@ function ActivityPage() {
               onClick={() => navigate({ search: { entityType: f.value } })}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-gray-900 text-white'
-                  : 'border text-gray-600 hover:bg-gray-50'
+                  ? 'btn-ink text-white'
+                  : 'border border-line bg-white text-sea-ink hover:bg-sea-ink/[0.03]'
               }`}
             >
               {f.label}
@@ -87,25 +87,25 @@ function ActivityPage() {
       </div>
 
       {log.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-sea-ink-soft">
           No activity recorded yet.
         </div>
       ) : (
         <div className="space-y-2">
           {log.map((entry) => {
             const Icon = actionIcon[entry.action] ?? ActivityIcon
-            const color = actionColor[entry.action] ?? 'text-gray-500 bg-gray-50'
+            const color = actionColor[entry.action] ?? 'text-sea-ink-soft bg-sea-ink/[0.04]'
             return (
               <div
                 key={entry.id}
-                className="bg-white border rounded-xl px-4 py-3 flex items-start gap-3"
+                className="app-card px-4 py-3 flex items-start gap-3"
               >
                 <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
                   <Icon size={15} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">{entry.description}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-sm text-sea-ink">{entry.description}</p>
+                  <p className="text-xs text-sea-ink-soft mt-0.5">
                     {entry.actorName ?? entry.staffName ?? 'System'} ·{' '}
                     {new Date(entry.createdAt).toLocaleString('en-GH', {
                       dateStyle: 'medium',

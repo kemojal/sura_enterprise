@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { useRefresh } from '#/lib/use-refresh'
 import { useMemo, useState } from 'react'
 import { ArrowLeft, ClipboardCheck } from 'lucide-react'
 
@@ -18,7 +19,7 @@ export const Route = createFileRoute('/app/products/stocktake')({
 
 function StocktakePage() {
   const products = Route.useLoaderData()
-  const router = useRouter()
+  const refresh = useRefresh()
 
   // counted[id] = string input; undefined means "not yet entered" (= no change)
   const [counted, setCounted] = useState<Record<string, string>>({})
@@ -59,7 +60,7 @@ function StocktakePage() {
       })
       setResult(res)
       setCounted({})
-      router.invalidate()
+      refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save stocktake')
     } finally {
@@ -70,12 +71,12 @@ function StocktakePage() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/app/products" className="text-gray-400 hover:text-gray-700">
+        <Link to="/app/products" className="text-sea-ink-soft hover:text-sea-ink">
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Stocktake</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">Stocktake</h2>
+          <p className="text-sm text-sea-ink-soft mt-0.5">
             Enter the physical count for each product. Only mismatches are
             adjusted.
           </p>
@@ -83,7 +84,7 @@ function StocktakePage() {
       </div>
 
       {result && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-2 text-sm text-green-800">
+        <div className="bg-palm/10 border border-palm/20 rounded-xl p-4 flex items-center gap-2 text-sm text-palm">
           <ClipboardCheck size={18} />
           Stocktake saved — {result.adjusted} product
           {result.adjusted === 1 ? '' : 's'} corrected.
@@ -100,16 +101,16 @@ function StocktakePage() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-sea-ink-soft">
           {changes.length > 0
             ? `${changes.length} change${changes.length === 1 ? '' : 's'}`
             : 'No changes'}
         </span>
       </div>
 
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="app-card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 text-left">
+          <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left">
             <tr>
               <th className="px-4 py-3 font-medium">Product</th>
               <th className="px-4 py-3 font-medium text-right">System</th>
@@ -117,15 +118,15 @@ function StocktakePage() {
               <th className="px-4 py-3 font-medium text-right">Diff</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-line">
             {filtered.map((p) => {
               const v = counted[p.id]
               const hasCount = v !== undefined && v !== ''
               const diff = hasCount ? Number(v) - p.stockQty : 0
               return (
                 <tr key={p.id} className={diff !== 0 ? 'bg-amber-50' : ''}>
-                  <td className="px-4 py-2 text-gray-900">{p.name}</td>
-                  <td className="px-4 py-2 text-right text-gray-600">
+                  <td className="px-4 py-2 text-sea-ink">{p.name}</td>
+                  <td className="px-4 py-2 text-right text-sea-ink-soft">
                     {p.stockQty}
                   </td>
                   <td className="px-4 py-2 text-right">
@@ -137,19 +138,19 @@ function StocktakePage() {
                       onChange={(e) =>
                         setCounted((prev) => ({ ...prev, [p.id]: e.target.value }))
                       }
-                      className="w-20 border rounded px-2 py-1 text-sm text-right"
+                      className="w-20 border border-line rounded px-2 py-1 text-sm text-right outline-none focus:border-lagoon focus:ring-2 focus:ring-lagoon/25 transition"
                     />
                   </td>
                   <td className="px-4 py-2 text-right">
                     {hasCount && diff !== 0 ? (
                       <span
-                        className={diff > 0 ? 'text-green-600' : 'text-red-600'}
+                        className={diff > 0 ? 'text-palm' : 'text-red-600'}
                       >
                         {diff > 0 ? '+' : ''}
                         {diff}
                       </span>
                     ) : (
-                      <span className="text-gray-300">—</span>
+                      <span className="text-sea-ink-soft">—</span>
                     )}
                   </td>
                 </tr>

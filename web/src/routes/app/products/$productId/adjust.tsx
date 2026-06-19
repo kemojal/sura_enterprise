@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { useRefresh } from '#/lib/use-refresh'
 import { useState } from 'react'
 import { ArrowLeft, Minus, Plus } from 'lucide-react'
 
@@ -21,8 +22,8 @@ export const Route = createFileRoute('/app/products/$productId/adjust')({
 })
 
 const adjTypes = [
-  { value: 'restock', label: 'Restock', icon: Plus, color: 'text-green-600', bg: 'bg-green-50 border-green-200', desc: 'Received new stock from supplier' },
-  { value: 'initial_count', label: 'Initial Count', icon: Plus, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', desc: 'Set correct quantity from physical count' },
+  { value: 'restock', label: 'Restock', icon: Plus, color: 'text-palm', bg: 'bg-green-50 border-green-200', desc: 'Received new stock from supplier' },
+  { value: 'initial_count', label: 'Initial Count', icon: Plus, color: 'text-lagoon-deep', bg: 'bg-lagoon/10 border-lagoon/20', desc: 'Set correct quantity from physical count' },
   { value: 'write_off', label: 'Write-off', icon: Minus, color: 'text-red-600', bg: 'bg-red-50 border-red-200', desc: 'Damaged, expired, or lost items' },
   { value: 'correction', label: 'Correction', icon: Plus, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', desc: 'Positive count discrepancy correction' },
 ] as const
@@ -37,7 +38,7 @@ const typeLabel: Record<string, string> = {
 function AdjustStockPage() {
   const { product, adjustments } = Route.useLoaderData()
   const { productId } = Route.useParams()
-  const router = useRouter()
+  const refresh = useRefresh()
 
   const [type, setType] = useState<(typeof adjTypes)[number]['value']>('restock')
   const [quantity, setQuantity] = useState('')
@@ -65,7 +66,7 @@ function AdjustStockPage() {
       setSuccess({ newQty: result.newQty })
       setQuantity('')
       setNote('')
-      router.invalidate()
+      refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to adjust stock')
     } finally {
@@ -78,17 +79,17 @@ function AdjustStockPage() {
       <div className="flex items-center gap-3">
         <Link
           to="/app/products"
-          className="text-gray-400 hover:text-gray-700"
+          className="text-sea-ink-soft hover:text-sea-ink"
         >
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">
             Adjust Stock — {product.name}
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-sea-ink-soft mt-0.5">
             Current stock:{' '}
-            <span className="font-medium text-gray-900">{product.stockQty}</span>
+            <span className="font-medium text-sea-ink">{product.stockQty}</span>
           </p>
         </div>
       </div>
@@ -111,22 +112,22 @@ function AdjustStockPage() {
                     className={`flex items-start gap-2 p-3 rounded-lg border text-left transition-colors ${
                       selected
                         ? `${t.bg} border-current`
-                        : 'bg-white border-gray-200 hover:bg-gray-50'
+                        : 'bg-white border-line hover:bg-sea-ink/[0.04]'
                     }`}
                   >
                     <Icon
                       size={14}
-                      className={`mt-0.5 shrink-0 ${selected ? t.color : 'text-gray-400'}`}
+                      className={`mt-0.5 shrink-0 ${selected ? t.color : 'text-sea-ink-soft'}`}
                     />
                     <div>
                       <p
                         className={`text-xs font-medium ${
-                          selected ? t.color : 'text-gray-700'
+                          selected ? t.color : 'text-sea-ink'
                         }`}
                       >
                         {t.label}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5 leading-tight">
+                      <p className="text-xs text-sea-ink-soft mt-0.5 leading-tight">
                         {t.desc}
                       </p>
                     </div>
@@ -143,7 +144,7 @@ function AdjustStockPage() {
             <div className="flex items-center gap-2">
               <span
                 className={`text-sm font-bold w-5 text-center ${
-                  isDecrease ? 'text-red-500' : 'text-green-600'
+                  isDecrease ? 'text-red-500' : 'text-palm'
                 }`}
               >
                 {isDecrease ? '−' : '+'}
@@ -159,9 +160,9 @@ function AdjustStockPage() {
                 placeholder="0"
               />
               {quantity && (
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-sea-ink-soft">
                   →{' '}
-                  <span className="font-medium text-gray-900">
+                  <span className="font-medium text-sea-ink">
                     {product.stockQty +
                       (isDecrease ? -parseInt(quantity) : parseInt(quantity))}
                   </span>{' '}
@@ -183,7 +184,7 @@ function AdjustStockPage() {
 
           {error && <p className="text-sm text-red-600">{error}</p>}
           {success && (
-            <p className="text-sm text-green-700 font-medium">
+            <p className="text-sm text-palm font-medium">
               Stock updated. New quantity: {success.newQty}
             </p>
           )}
@@ -195,11 +196,11 @@ function AdjustStockPage() {
 
         {/* History */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-gray-700">
+          <h3 className="text-sm font-medium text-sea-ink">
             Recent adjustments
           </h3>
           {adjustments.length === 0 ? (
-            <p className="text-sm text-gray-400">No adjustments yet.</p>
+            <p className="text-sm text-sea-ink-soft">No adjustments yet.</p>
           ) : (
             <div className="space-y-2">
               {adjustments.map((a) => {
@@ -207,25 +208,25 @@ function AdjustStockPage() {
                 return (
                   <div
                     key={a.id}
-                    className="bg-white border rounded-lg px-4 py-3 flex items-start justify-between gap-3"
+                    className="app-card rounded-lg px-4 py-3 flex items-start justify-between gap-3"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-gray-700">
+                        <span className="text-xs font-medium text-sea-ink">
                           {typeLabel[a.type] ?? a.type}
                         </span>
                         {a.staffName && (
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-sea-ink-soft">
                             · {a.staffName}
                           </span>
                         )}
                       </div>
                       {a.note && (
-                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                        <p className="text-xs text-sea-ink-soft mt-0.5 truncate">
                           {a.note}
                         </p>
                       )}
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-sea-ink-soft mt-0.5">
                         {new Date(a.createdAt).toLocaleDateString('en-GH', {
                           day: 'numeric',
                           month: 'short',
@@ -236,7 +237,7 @@ function AdjustStockPage() {
                     </div>
                     <span
                       className={`text-sm font-bold shrink-0 ${
-                        isNeg ? 'text-red-600' : 'text-green-600'
+                        isNeg ? 'text-red-600' : 'text-palm'
                       }`}
                     >
                       {isNeg ? '' : '+'}

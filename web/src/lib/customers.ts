@@ -7,39 +7,45 @@ import { db } from '#/db/index'
 import { customerPayments, customers, products, saleItems, sales } from '#/db/schema'
 import { logActivity } from './activity'
 import { getShopCtx, getShopCtxWithPermission } from './context'
+import type { ShopContext } from './context'
 import { nanoid } from './nanoid'
+
+export async function _listCustomersCore(
+  ctx: ShopContext,
+  data: { search?: string },
+) {
+  const conditions = [eq(customers.shopId, ctx.shopId)]
+  if (data.search) conditions.push(ilike(customers.name, `%${data.search}%`))
+  return db
+    .select({
+      id: customers.id,
+      name: customers.name,
+      phone: customers.phone,
+      email: customers.email,
+      loyaltyPoints: customers.loyaltyPoints,
+      totalDebt: sql<string>`coalesce(sum(${sales.totalAmount} - ${sales.amountPaid}), 0)`,
+    })
+    .from(customers)
+    .leftJoin(
+      sales,
+      and(eq(sales.customerId, customers.id), eq(sales.status, 'credit')),
+    )
+    .where(and(...conditions))
+    .groupBy(
+      customers.id,
+      customers.name,
+      customers.phone,
+      customers.email,
+      customers.loyaltyPoints,
+    )
+    .orderBy(customers.name)
+}
 
 export const listCustomers = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ search: z.string().optional() }))
-  .handler(async ({ data }) => {
-    const request = getRequest()
-    const { shopId } = await getShopCtx(request.headers)
-    const conditions = [eq(customers.shopId, shopId)]
-    if (data.search) conditions.push(ilike(customers.name, `%${data.search}%`))
-    return db
-      .select({
-        id: customers.id,
-        name: customers.name,
-        phone: customers.phone,
-        email: customers.email,
-        loyaltyPoints: customers.loyaltyPoints,
-        totalDebt: sql<string>`coalesce(sum(${sales.totalAmount} - ${sales.amountPaid}), 0)`,
-      })
-      .from(customers)
-      .leftJoin(
-        sales,
-        and(eq(sales.customerId, customers.id), eq(sales.status, 'credit')),
-      )
-      .where(and(...conditions))
-      .groupBy(
-        customers.id,
-        customers.name,
-        customers.phone,
-        customers.email,
-        customers.loyaltyPoints,
-      )
-      .orderBy(customers.name)
-  })
+  .handler(async ({ data }) =>
+    _listCustomersCore(await getShopCtx(getRequest().headers), data),
+  )
 
 export const getCustomer = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ id: z.string() }))

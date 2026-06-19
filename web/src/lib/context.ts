@@ -50,27 +50,22 @@ export async function getShopCtxForUser(
   userId: string,
   userName?: string,
 ): Promise<ShopContext> {
+  // Owner path in a single round-trip: shop + this user's staff row (if any).
   const [ownedShop] = await db
-    .select({ id: shops.id })
+    .select({ id: shops.id, staffId: staffMembers.id })
     .from(shops)
+    .leftJoin(
+      staffMembers,
+      and(eq(staffMembers.shopId, shops.id), eq(staffMembers.userId, userId)),
+    )
     .where(eq(shops.ownerId, userId))
     .limit(1)
 
   if (ownedShop) {
-    const [ownerStaff] = await db
-      .select({ id: staffMembers.id })
-      .from(staffMembers)
-      .where(
-        and(
-          eq(staffMembers.shopId, ownedShop.id),
-          eq(staffMembers.userId, userId),
-        ),
-      )
-      .limit(1)
     return {
       shopId: ownedShop.id,
       role: 'owner',
-      staffId: ownerStaff?.id,
+      staffId: ownedShop.staffId ?? undefined,
       userId,
       userName,
     }

@@ -12,7 +12,12 @@ export function getRouter() {
     context,
     scrollRestoration: true,
     defaultPreload: 'intent',
+    // Keep preloaded data fresh long enough to cover hover->click.
     defaultPreloadStaleTime: 30_000,
+    // Reuse loader data on revisits instead of re-running the server fn
+    // (Neon HTTP round-trip) on every navigation. Mutations call
+    // router.invalidate() to force a refetch when data actually changes.
+    defaultStaleTime: 30_000,
   })
 
   setupRouterSsrQueryIntegration({ router, queryClient: context.queryClient })

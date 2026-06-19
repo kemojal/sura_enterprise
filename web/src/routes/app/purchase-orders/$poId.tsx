@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { useRefresh } from '#/lib/use-refresh'
 import { useState } from 'react'
 import { ArrowLeft, PackageCheck } from 'lucide-react'
 
@@ -22,15 +23,15 @@ export const Route = createFileRoute('/app/purchase-orders/$poId')({
 })
 
 const statusStyle: Record<string, string> = {
-  ordered: 'bg-blue-100 text-blue-700',
-  received: 'bg-green-100 text-green-700',
-  cancelled: 'bg-gray-100 text-gray-500',
+  ordered: 'bg-lagoon/15 text-lagoon-deep',
+  received: 'bg-palm/12 text-palm',
+  cancelled: 'bg-sea-ink/[0.06] text-sea-ink-soft',
 }
 
 function PurchaseOrderDetailPage() {
   const { po, items } = Route.useLoaderData()
   const { poId } = Route.useParams()
-  const router = useRouter()
+  const refresh = useRefresh()
 
   const [payAmount, setPayAmount] = useState('')
   const [busy, setBusy] = useState(false)
@@ -43,7 +44,7 @@ function PurchaseOrderDetailPage() {
     setError('')
     try {
       await fn()
-      router.invalidate()
+      refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Action failed')
     } finally {
@@ -57,15 +58,15 @@ function PurchaseOrderDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             to="/app/purchase-orders"
-            className="text-gray-400 hover:text-gray-700"
+            className="text-sea-ink-soft hover:text-sea-ink"
           >
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="display-title text-2xl font-bold text-sea-ink tracking-tight">
               Purchase Order #{poId.slice(-8).toUpperCase()}
             </h2>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-sea-ink-soft mt-0.5">
               {po.supplierName ?? 'No supplier'} ·{' '}
               {new Date(po.createdAt).toLocaleDateString()}
             </p>
@@ -79,9 +80,9 @@ function PurchaseOrderDetailPage() {
       </div>
 
       {/* Items */}
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className="app-card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 text-left">
+          <thead className="bg-sea-ink/[0.03] text-sea-ink-soft text-left">
             <tr>
               <th className="px-4 py-3 font-medium">Product</th>
               <th className="px-4 py-3 font-medium text-center">Qty</th>
@@ -89,30 +90,30 @@ function PurchaseOrderDetailPage() {
               <th className="px-4 py-3 font-medium text-right">Subtotal</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-line">
             {items.map((i) => (
               <tr key={i.id}>
-                <td className="px-4 py-3 text-gray-900">
+                <td className="px-4 py-3 text-sea-ink">
                   {i.productName ?? 'Item'}
                 </td>
-                <td className="px-4 py-3 text-center text-gray-600">
+                <td className="px-4 py-3 text-center text-sea-ink-soft">
                   {i.quantity}
                 </td>
-                <td className="px-4 py-3 text-right text-gray-600">
+                <td className="px-4 py-3 text-right text-sea-ink-soft">
                   {i.unitCost}
                 </td>
-                <td className="px-4 py-3 text-right font-medium text-gray-900">
+                <td className="px-4 py-3 text-right font-medium text-sea-ink">
                   {i.subtotal}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t">
-              <td colSpan={3} className="px-4 py-3 text-right font-medium text-gray-700">
+            <tr className="border-t border-line">
+              <td colSpan={3} className="px-4 py-3 text-right font-medium text-sea-ink">
                 Total
               </td>
-              <td className="px-4 py-3 text-right font-bold text-gray-900">
+              <td className="px-4 py-3 text-right font-bold text-sea-ink">
                 {po.totalAmount}
               </td>
             </tr>
@@ -121,8 +122,8 @@ function PurchaseOrderDetailPage() {
       </div>
 
       {po.notes && (
-        <p className="text-sm text-gray-500">
-          <span className="font-medium text-gray-700">Notes:</span> {po.notes}
+        <p className="text-sm text-sea-ink-soft">
+          <span className="font-medium text-sea-ink">Notes:</span> {po.notes}
         </p>
       )}
 
@@ -149,7 +150,7 @@ function PurchaseOrderDetailPage() {
           </>
         )}
         {po.status === 'received' && (
-          <span className="text-sm text-green-700 flex items-center gap-1.5">
+          <span className="text-sm text-palm flex items-center gap-1.5">
             <PackageCheck size={15} />
             Received{' '}
             {po.receivedAt && new Date(po.receivedAt).toLocaleDateString()} — stock updated
@@ -158,20 +159,20 @@ function PurchaseOrderDetailPage() {
       </div>
 
       {/* Supplier payment */}
-      <div className="bg-white border rounded-xl p-5 space-y-3">
+      <div className="app-card p-5 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium text-gray-900">Supplier Payment</h3>
+          <h3 className="font-semibold text-sea-ink">Supplier Payment</h3>
           <span className="text-sm">
             {owed > 0 ? (
               <span className="text-red-600 font-medium">
                 Owe {owed.toFixed(2)}
               </span>
             ) : (
-              <span className="text-green-600 font-medium">Fully paid</span>
+              <span className="text-palm font-medium">Fully paid</span>
             )}
           </span>
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-sea-ink-soft">
           Paid {po.amountPaid} of {po.totalAmount}
         </p>
         {owed > 0 && po.status !== 'cancelled' && (
